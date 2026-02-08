@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
+    const navigate = useNavigate();
     const [mode, setMode] = useState('login'); // 'login' | 'signup'
+    const [loginMethod, setLoginMethod] = useState('otp'); // 'otp' | 'password'
     const [step, setStep] = useState(1); // 1: Email/Form, 2: OTP Verification (Login only)
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(null);
@@ -111,25 +114,60 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
                 )}
 
                 {mode === 'login' && step === 1 && (
-                    <form onSubmit={handleRequestOtp}>
-                        <div className="form-group">
-                            <label>Email Address</label>
-                            <input
-                                type="email"
-                                name="email"
-                                value={formData.email}
-                                onChange={handleChange}
-                                required
-                                placeholder="Enter your email"
-                            />
+                    <div>
+                        <div style={{display:'flex',gap:10,marginBottom:12}}>
+                            <button className={loginMethod==='otp'? 'btn btn-primary':'btn'} onClick={()=>setLoginMethod('otp')}>OTP</button>
+                            <button className={loginMethod==='password'? 'btn btn-primary':'btn'} onClick={()=>setLoginMethod('password')}>Password</button>
                         </div>
-                        <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
-                            {loading ? 'Sending...' : 'Get OTP'}
-                        </button>
+
+                        {loginMethod === 'otp' && (
+                            <form onSubmit={handleRequestOtp}>
+                                <div className="form-group">
+                                    <label>Email Address</label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        required
+                                        placeholder="Enter your email"
+                                    />
+                                </div>
+                                <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
+                                    {loading ? 'Sending...' : 'Get OTP'}
+                                </button>
+                            </form>
+                        )}
+
+                        {loginMethod === 'password' && (
+                            <form onSubmit={async e=>{
+                                e.preventDefault(); setLoading(true); setMessage(null);
+                                try{
+                                    const res = await axios.post('/api/auth/login',{username: formData.username, password: formData.password});
+                                    localStorage.setItem('token', res.data.token);
+                                    localStorage.setItem('user', JSON.stringify(res.data));
+                                    onLoginSuccess(res.data);
+                                    handleClose();
+                                }catch(err){ setMessage({type:'error', text: err.response?.data || 'Login failed'}) }
+                                finally{ setLoading(false) }
+                            }}>
+                                <div className="form-group">
+                                    <label>Username</label>
+                                    <input type="text" name="username" value={formData.username} onChange={handleChange} required />
+                                </div>
+                                <div className="form-group">
+                                    <label>Password</label>
+                                    <input type="password" name="password" value={formData.password} onChange={handleChange} required />
+                                    <a href="#" onClick={(e) => { e.preventDefault(); handleClose(); navigate('/forgot-password'); }} style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.5rem', display: 'block' }}>Forgot Password?</a>
+                                </div>
+                                <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>{loading? 'Signing in...' : 'Sign in'}</button>
+                            </form>
+                        )}
+
                         <p style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.9rem' }}>
                             Don't have an account? <a href="#" onClick={(e) => { e.preventDefault(); setMode('signup'); setMessage(null); }} style={{ color: 'var(--primary-color)' }}>Sign up</a>
                         </p>
-                    </form>
+                    </div>
                 )}
 
                 {mode === 'login' && step === 2 && (

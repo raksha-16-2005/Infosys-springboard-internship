@@ -35,5 +35,19 @@ public class EmailService {
             System.out.println("DEV OTP for " + toEmail + " is: " + otpCode);
         }
     }
+
+    public void sendResetEmail(String toEmail, String link) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(toEmail);
+        message.setSubject("Password reset");
+        message.setText("Reset your password: " + link + "\nThis link is valid for 15 minutes.");
+        if (fromAddress != null && !fromAddress.isEmpty()) {
+            message.setFrom(fromAddress);
+        }
+        try { mailSender.send(message); } catch (Exception ex) {
+            System.err.println("Failed to send reset email: " + ex.getMessage());
+            System.out.println("DEV reset link for " + toEmail + " is: " + link);
+        }
+    }
 }
 

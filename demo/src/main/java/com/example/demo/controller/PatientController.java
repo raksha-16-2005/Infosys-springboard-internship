@@ -1,54 +1,75 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.*;
 import com.example.demo.model.User;
 import com.example.demo.repository.UserRepository;
+import com.example.demo.service.PatientService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.util.HashMap;
-import java.util.Map;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/patients")
+@RequestMapping("/api/patient")
 public class PatientController {
 
     private final UserRepository userRepository;
+    private final PatientService patientService;
 
-    public PatientController(UserRepository userRepository) {
+    public PatientController(UserRepository userRepository, PatientService patientService) {
         this.userRepository = userRepository;
+        this.patientService = patientService;
     }
 
-    /**
-     * PATIENT-only endpoint: view own profile.
-     */
-    @GetMapping("/me")
+    private User getAuthenticatedUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return null;
+        return userRepository.findByUsername(auth.getName()).orElse(null);
+    }
+
+    @GetMapping("/profile")
     @PreAuthorize("hasRole('PATIENT')")
-    public ResponseEntity<?> getMyProfile() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    public ResponseEntity<?> getProfile() {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        PatientProfileDTO profile = patientService.getProfile(user);
+        return ResponseEntity.ok(profile);
+    }
 
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(401).body("Unauthorized");
-        }
+    @PutMapping("/profile")
+    @PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<?> updateProfile(@RequestBody ProfileDTO dto) {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        PatientProfileDTO profile = patientService.updateProfile(user, dto);
+        return ResponseEntity.ok(profile);
+    }
 
-        String username = authentication.getName();
+    @PostMapping("/appointments")
+    @PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<?> bookAppointment(@RequestBody AppointmentRequest req) {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        AppointmentDTO appointment = patientService.bookAppointment(user, req.getDoctorId(), req);
+        if (appointment == null) return ResponseEntity.badRequest().body("Failed to book appointment");
+        return ResponseEntity.ok(appointment);
+    }
 
-        User user = userRepository.findByUsername(username).orElse(null);
-        if (user == null) {
-            return ResponseEntity.status(404).body("User not found");
-        }
+    @GetMapping("/appointments")
+    @PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<?> getAppointments() {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        return ResponseEntity.ok(patientService.myAppointments(user));
+    }
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("id", user.getId());
-        body.put("username", user.getUsername());
-        body.put("email", user.getEmail());
-        body.put("role", user.getRole());
-
-        return ResponseEntity.ok(body);
+    @GetMapping("/prescriptions")
+    @PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<?> getPrescriptions() {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        return ResponseEntity.ok(patientService.myPrescriptions(user));
     }
 }
 

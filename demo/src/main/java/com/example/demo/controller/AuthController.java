@@ -48,8 +48,15 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest) {
 
+        String identifier = loginRequest.getUsername();
+        // allow users to login with email as well as username
+        if (identifier != null && identifier.contains("@")) {
+            java.util.Optional<com.example.demo.model.User> u = userRepository.findByEmail(identifier);
+            if (u.isPresent()) identifier = u.get().getUsername();
+        }
+
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
+                new UsernamePasswordAuthenticationToken(identifier, loginRequest.getPassword()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtUtils.generateJwtToken(authentication);
