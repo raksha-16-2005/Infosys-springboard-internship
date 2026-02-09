@@ -3,8 +3,12 @@ import { Routes, Route, Link, useNavigate } from 'react-router-dom'
 import AuthModal from './components/AuthModal';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
-import PatientDashboard from './components/PatientDashboard';
-import DoctorDashboard from './components/DoctorDashboard';
+import PatientDashboardNew from './components/PatientDashboardNew';
+import DoctorDashboardNew from './components/DoctorDashboardNew';
+import './styles/global.css';
+import './styles/dashboard.css';
+import './styles/calendar.css';
+import './styles/prescription.css';
 
 function App() {
     const [isAuthOpen, setAuthOpen] = useState(false);
@@ -28,44 +32,11 @@ function App() {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);
-        // navigate back to landing page so UI shows Sign in / Sign up
         navigate('/');
     };
 
-    return (
-        <div>
-            {/* Navbar */}
-            <nav className="navbar glass-panel" style={{ borderRadius: '0 0 16px 16px', top: 0, margin: '0 1rem', width: 'calc(100% - 2rem)', position: 'fixed' }}>
-                <Link to="/" className="logo" style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <span style={{ fontSize: '1.8rem' }}>🏥</span> MedVault
-                </Link>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    {user ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <span style={{ fontWeight: 500 }}>Hi, {user.username} ({user.role})</span>
-                            <button className="btn btn-outline" onClick={handleLogout}>Logout</button>
-                            <a href={user.role && user.role.includes('PATIENT')? '/patient':'/doctor'} className="btn btn-primary">Dashboard</a>
-                        </div>
-                    ) : (
-                        <>
-                            <button className="btn btn-outline" onClick={() => setAuthOpen(true)}>Login</button>
-                            <button className="btn btn-primary" onClick={() => setAuthOpen(true)}>Sign Up</button>
-                        </>
-                    )}
-
-                </div>
-            </nav>
-
-            <div style={{ marginTop: 120 }}>
-                <Routes>
-                    <Route path="/forgot-password" element={<ForgotPassword />} />
-                    <Route path="/reset-password" element={<ResetPassword />} />
-                    <Route path="/patient" element={<PatientDashboard />} />
-                    <Route path="/doctor" element={<DoctorDashboard />} />
-                    <Route path="/" element={<div style={{padding:20}}>Welcome to MedVault</div>} />
-                </Routes>
-            </div>
-
+    const HomePage = () => (
+        <>
             {/* Hero Section */}
             <div className="container hero">
                 <div className="hero-content">
@@ -113,6 +84,42 @@ function App() {
                         </div>
                     </div>
                 </div>
+            </div>
+        </>
+    );
+
+    return (
+        <div>
+            {/* Navbar */}
+            <nav className="navbar glass-panel" style={{ borderRadius: '0 0 16px 16px', top: 0, margin: '0 1rem', width: 'calc(100% - 2rem)', position: 'fixed' }}>
+                <Link to="/" className="logo" style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <span style={{ fontSize: '1.8rem' }}>🏥</span> MedVault
+                </Link>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                    {user ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <span style={{ fontWeight: 500 }}>Hi, {user.username} ({user.role})</span>
+                            <button className="btn btn-outline" onClick={handleLogout}>Logout</button>
+                            <a href={user.role && user.role.includes('PATIENT')? '/patient':'/doctor'} className="btn btn-primary">Dashboard</a>
+                        </div>
+                    ) : (
+                        <>
+                            <button className="btn btn-outline" onClick={() => setAuthOpen(true)}>Login</button>
+                            <button className="btn btn-primary" onClick={() => setAuthOpen(true)}>Sign Up</button>
+                        </>
+                    )}
+
+                </div>
+            </nav>
+
+            <div style={{ marginTop: 120 }}>
+                <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/patient" element={<PatientDashboardNew />} />
+                    <Route path="/doctor" element={<DoctorDashboardNew />} />
+                </Routes>
             </div>
 
             <AuthModal

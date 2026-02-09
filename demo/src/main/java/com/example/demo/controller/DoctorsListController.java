@@ -1,7 +1,6 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.DoctorProfileDTO;
-import com.example.demo.model.DoctorProfile;
 import com.example.demo.repository.DoctorProfileRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

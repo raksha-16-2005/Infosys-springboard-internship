@@ -11,14 +11,12 @@ import java.util.stream.Collectors;
 
 @Service
 public class PatientService {
-    private final UserRepository userRepo;
     private final PatientProfileRepository profileRepo;
     private final AppointmentRepository apptRepo;
     private final DoctorProfileRepository doctorProfileRepo;
     private final PrescriptionRepository prescriptionRepo;
 
-    public PatientService(UserRepository userRepo, PatientProfileRepository profileRepo, AppointmentRepository apptRepo, DoctorProfileRepository doctorProfileRepo, PrescriptionRepository prescriptionRepo) {
-        this.userRepo = userRepo;
+    public PatientService(PatientProfileRepository profileRepo, AppointmentRepository apptRepo, DoctorProfileRepository doctorProfileRepo, PrescriptionRepository prescriptionRepo) {
         this.profileRepo = profileRepo;
         this.apptRepo = apptRepo;
         this.doctorProfileRepo = doctorProfileRepo;
@@ -79,7 +77,8 @@ public class PatientService {
         a.setDoctor(dProfile);
         a.setAppointmentDate(LocalDateTime.parse(req.getAppointmentDate()));
         a.setNotes(req.getNotes());
-        a.setStatus(Appointment.Status.PENDING);
+        a.setSymptoms(req.getSymptoms());
+        a.setStatus(Appointment.Status.SCHEDULED);
         a = apptRepo.save(a);
         return convertToAppointmentDTO(a);
     }
@@ -87,14 +86,46 @@ public class PatientService {
     public List<AppointmentDTO> myAppointments(User patient) {
         PatientProfile pProfile = profileRepo.findByUser(patient).orElse(null);
         if (pProfile == null) return List.of();
-        return apptRepo.findByPatient(pProfile).stream().map(this::convertToAppointmentDTO).collect(Collectors.toList());
+        return apptRepo.findByPatient(pProfile).stream()
+                .sorted((a, b) -> b.getAppointmentDate().compareTo(a.getAppointmentDate()))
+                .map(this::convertToAppointmentDTO).collect(Collectors.toList());
+    }
+
+    public List<AppointmentDTO> getUpcomingAppointments(User patient) {
+        PatientProfile pProfile = profileRepo.findByUser(patient).orElse(null);
+        if (pProfile == null) return List.of();
+        return apptRepo.findUpcomingByPatient(pProfile, LocalDateTime.now()).stream()
+                .map(this::convertToAppointmentDTO).collect(Collectors.toList());
     }
 
     public List<PrescriptionResponseDTO> myPrescriptions(User patient) {
         PatientProfile pProfile = profileRepo.findByUser(patient).orElse(null);
         if (pProfile == null) return List.of();
         List<Appointment> appts = apptRepo.findByPatient(pProfile);
-        return prescriptionRepo.findByAppointmentIn(appts).stream().map(this::convertToPrescriptionDTO).collect(Collectors.toList());
+        return prescriptionRepo.findByAppointmentIn(appts).stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(this::convertToPrescriptionDTO).collect(Collectors.toList());
+    }
+
+    public PrescriptionResponseDTO getPrescription(Long appointmentId) {
+        Appointment appt = apptRepo.findById(appointmentId).orElse(null);
+        if (appt == null) return null;
+        Prescription p = prescriptionRepo.findByAppointment(appt).orElse(null);
+        if (p == null) return null;
+        return convertToPrescriptionDTO(p);
+    }
+
+    public List<PrescriptionResponseDTO> getFollowUpPrescriptions(User patient) {
+        PatientProfile pProfile = profileRepo.findByUser(patient).orElse(null);
+        if (pProfile == null) return List.of();
+        return prescriptionRepo.findFollowUpsByPatient(pProfile).stream()
+                .map(this::convertToPrescriptionDTO).collect(Collectors.toList());
+    }
+
+    public AppointmentDTO getAppointmentDetail(Long appointmentId) {
+        Appointment a = apptRepo.findById(appointmentId).orElse(null);
+        if (a == null) return null;
+        return convertToAppointmentDetailDTO(a);
     }
 
     private AppointmentDTO convertToAppointmentDTO(Appointment a) {
@@ -103,6 +134,8 @@ public class PatientService {
         dto.setAppointmentDate(a.getAppointmentDate());
         dto.setStatus(a.getStatus().toString());
         dto.setNotes(a.getNotes());
+        dto.setSymptoms(a.getSymptoms());
+        dto.setCreatedAt(a.getCreatedAt());
         
         PatientProfileDTO pDto = new PatientProfileDTO();
         pDto.setId(a.getPatient().getId());
@@ -118,13 +151,22 @@ public class PatientService {
         return dto;
     }
 
+    private AppointmentDTO convertToAppointmentDetailDTO(Appointment a) {
+        AppointmentDTO dto = convertToAppointmentDTO(a);
+        dto.setConsultationNotes(a.getConsultationNotes());
+        return dto;
+    }
+
     private PrescriptionResponseDTO convertToPrescriptionDTO(Prescription p) {
         PrescriptionResponseDTO dto = new PrescriptionResponseDTO();
         dto.setId(p.getId());
-        dto.setMedicines(p.getMedicines());
-        dto.setDosageInstructions(p.getDosageInstructions());
+        dto.setDiagnosis(p.getDiagnosis());
+        dto.setMedicinesJson(p.getMedicinesJson());
+        dto.setTestsRecommended(p.getTestsRecommended());
+        dto.setFollowUpDate(p.getFollowUpDate());
+        dto.setNotes(p.getNotes());
         dto.setCreatedAt(p.getCreatedAt());
-        dto.setAppointment(convertToAppointmentDTO(p.getAppointment()));
+        dto.setAppointment(convertToAppointmentDetailDTO(p.getAppointment()));
         return dto;
     }
 }

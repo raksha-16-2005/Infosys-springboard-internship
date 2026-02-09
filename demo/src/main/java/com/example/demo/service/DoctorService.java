@@ -4,19 +4,18 @@ import com.example.demo.dto.*;
 import com.example.demo.model.*;
 import com.example.demo.repository.*;
 import org.springframework.stereotype.Service;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 public class DoctorService {
-    private final UserRepository userRepo;
     private final DoctorProfileRepository doctorProfileRepo;
     private final AppointmentRepository apptRepo;
     private final PrescriptionRepository prescriptionRepo;
 
-    public DoctorService(UserRepository userRepo, DoctorProfileRepository doctorProfileRepo, AppointmentRepository apptRepo, PrescriptionRepository prescriptionRepo) {
-        this.userRepo = userRepo;
+    public DoctorService(DoctorProfileRepository doctorProfileRepo, AppointmentRepository apptRepo, PrescriptionRepository prescriptionRepo) {
         this.doctorProfileRepo = doctorProfileRepo;
         this.apptRepo = apptRepo;
         this.prescriptionRepo = prescriptionRepo;
@@ -68,23 +67,76 @@ public class DoctorService {
         return apptRepo.findByDoctor(dProfile).stream().map(this::convertToAppointmentDTO).collect(Collectors.toList());
     }
 
+    public List<AppointmentDTO> getTodayAppointments(User doctor) {
+        DoctorProfile dProfile = doctorProfileRepo.findByUser(doctor).orElse(null);
+        if (dProfile == null) return List.of();
+        LocalDate today = LocalDate.now();
+        return apptRepo.findByDoctorAndDate(dProfile, today).stream()
+                .map(this::convertToAppointmentDTO).collect(Collectors.toList());
+    }
+
+    public List<AppointmentDTO> getAppointmentsByStatus(User doctor, String status) {
+        DoctorProfile dProfile = doctorProfileRepo.findByUser(doctor).orElse(null);
+        if (dProfile == null) return List.of();
+        try {
+            Appointment.Status enumStatus = Appointment.Status.valueOf(status.toUpperCase());
+            return apptRepo.findByDoctorAndStatus(dProfile, enumStatus).stream()
+                    .map(this::convertToAppointmentDTO).collect(Collectors.toList());
+        } catch (IllegalArgumentException e) {
+            return List.of();
+        }
+    }
+
+    public AppointmentDTO getAppointmentDetail(Long appointmentId) {
+        Appointment a = apptRepo.findById(appointmentId).orElse(null);
+        if (a == null) return null;
+        return convertToAppointmentDetailDTO(a);
+    }
+
     public AppointmentDTO updateAppointmentStatus(Long appointmentId, String status) {
         Appointment a = apptRepo.findById(appointmentId).orElse(null);
         if (a == null) return null;
-        a.setStatus(Appointment.Status.valueOf(status));
+        try {
+            a.setStatus(Appointment.Status.valueOf(status.toUpperCase()));
+            a = apptRepo.save(a);
+            return convertToAppointmentDTO(a);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    public AppointmentDTO updateAppointmentConsultationNotes(Long appointmentId, String notes, String symptoms, String consultationNotes) {
+        Appointment a = apptRepo.findById(appointmentId).orElse(null);
+        if (a == null) return null;
+        if (notes != null) a.setNotes(notes);
+        if (symptoms != null) a.setSymptoms(symptoms);
+        if (consultationNotes != null) a.setConsultationNotes(consultationNotes);
         a = apptRepo.save(a);
-        return convertToAppointmentDTO(a);
+        return convertToAppointmentDetailDTO(a);
     }
 
     public PrescriptionResponseDTO addPrescription(Long appointmentId, PrescriptionDTO dto) {
         Appointment appt = apptRepo.findById(appointmentId).orElse(null);
         if (appt == null) return null;
         
-        Prescription p = new Prescription();
+        Prescription p = prescriptionRepo.findByAppointment(appt).orElse(new Prescription());
         p.setAppointment(appt);
-        p.setMedicines(dto.getMedicines());
-        p.setDosageInstructions(dto.getDosageInstructions());
+        p.setDiagnosis(dto.getDiagnosis());
+        p.setMedicinesJson(dto.getMedicinesJson());
+        p.setTestsRecommended(dto.getTestsRecommended());
+        p.setFollowUpDate(dto.getFollowUpDate());
+        p.setNotes(dto.getNotes());
         p = prescriptionRepo.save(p);
+        appt.setPrescription(p);
+        apptRepo.save(appt);
+        return convertToPrescriptionDTO(p);
+    }
+
+    public PrescriptionResponseDTO getPrescription(Long appointmentId) {
+        Appointment appt = apptRepo.findById(appointmentId).orElse(null);
+        if (appt == null) return null;
+        Prescription p = prescriptionRepo.findByAppointment(appt).orElse(null);
+        if (p == null) return null;
         return convertToPrescriptionDTO(p);
     }
 
@@ -94,6 +146,7 @@ public class DoctorService {
         dto.setAppointmentDate(a.getAppointmentDate());
         dto.setStatus(a.getStatus().toString());
         dto.setNotes(a.getNotes());
+        dto.setCreatedAt(a.getCreatedAt());
         
         PatientProfileDTO pDto = new PatientProfileDTO();
         pDto.setId(a.getPatient().getId());
@@ -111,13 +164,23 @@ public class DoctorService {
         return dto;
     }
 
+    private AppointmentDTO convertToAppointmentDetailDTO(Appointment a) {
+        AppointmentDTO dto = convertToAppointmentDTO(a);
+        dto.setSymptoms(a.getSymptoms());
+        dto.setConsultationNotes(a.getConsultationNotes());
+        return dto;
+    }
+
     private PrescriptionResponseDTO convertToPrescriptionDTO(Prescription p) {
         PrescriptionResponseDTO dto = new PrescriptionResponseDTO();
         dto.setId(p.getId());
-        dto.setMedicines(p.getMedicines());
-        dto.setDosageInstructions(p.getDosageInstructions());
+        dto.setDiagnosis(p.getDiagnosis());
+        dto.setMedicinesJson(p.getMedicinesJson());
+        dto.setTestsRecommended(p.getTestsRecommended());
+        dto.setFollowUpDate(p.getFollowUpDate());
+        dto.setNotes(p.getNotes());
         dto.setCreatedAt(p.getCreatedAt());
-        dto.setAppointment(convertToAppointmentDTO(p.getAppointment()));
+        dto.setAppointment(convertToAppointmentDetailDTO(p.getAppointment()));
         return dto;
     }
 }

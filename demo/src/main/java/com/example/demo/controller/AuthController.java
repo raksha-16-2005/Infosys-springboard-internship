@@ -23,7 +23,6 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-@CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -62,7 +61,11 @@ public class AuthController {
         String jwt = jwtUtils.generateJwtToken(authentication);
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String role = userDetails.getAuthorities().toString();
+        String role = "";
+        if (userDetails.getAuthorities() != null && !userDetails.getAuthorities().isEmpty()) {
+            role = userDetails.getAuthorities().iterator().next().getAuthority();
+            if (role.startsWith("ROLE_")) role = role.substring(5);
+        }
 
         return ResponseEntity.ok(new JwtResponse(jwt,
                                                  userDetails.getUsername(),

@@ -9,10 +9,15 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/doctor")
 public class DoctorController {
+
+    private static final Logger logger = LoggerFactory.getLogger(DoctorController.class);
 
     private final DoctorService doctorService;
     private final UserRepository userRepository;
@@ -42,6 +47,7 @@ public class DoctorController {
     public ResponseEntity<?> updateProfile(@RequestBody ProfileDTO dto) {
         User user = getAuthenticatedUser();
         if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        logger.info("Doctor profile update requested by user: {} role: {}", user.getUsername(), user.getRole());
         DoctorProfileDTO profile = doctorService.updateProfile(user, dto);
         return ResponseEntity.ok(profile);
     }
@@ -54,11 +60,46 @@ public class DoctorController {
         return ResponseEntity.ok(doctorService.myAppointments(user));
     }
 
+    @GetMapping("/appointments/today")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public ResponseEntity<?> getTodayAppointments() {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        return ResponseEntity.ok(doctorService.getTodayAppointments(user));
+    }
+
+    @GetMapping("/appointments/status/{status}")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public ResponseEntity<?> getAppointmentsByStatus(@PathVariable String status) {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        return ResponseEntity.ok(doctorService.getAppointmentsByStatus(user, status));
+    }
+
+    @GetMapping("/appointments/{appointmentId}")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public ResponseEntity<?> getAppointmentDetail(@PathVariable Long appointmentId) {
+        AppointmentDTO appointment = doctorService.getAppointmentDetail(appointmentId);
+        if (appointment == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(appointment);
+    }
+
     @PutMapping("/appointments/{appointmentId}/status")
     @PreAuthorize("hasRole('DOCTOR')")
-    public ResponseEntity<?> updateAppointmentStatus(@PathVariable Long appointmentId, @RequestBody java.util.Map<String, String> body) {
+    public ResponseEntity<?> updateAppointmentStatus(@PathVariable Long appointmentId, @RequestBody Map<String, String> body) {
         String status = body.get("status");
         AppointmentDTO appointment = doctorService.updateAppointmentStatus(appointmentId, status);
+        if (appointment == null) return ResponseEntity.badRequest().body("Appointment not found");
+        return ResponseEntity.ok(appointment);
+    }
+
+    @PutMapping("/appointments/{appointmentId}/consultation")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public ResponseEntity<?> updateConsultationNotes(@PathVariable Long appointmentId, @RequestBody Map<String, String> body) {
+        String notes = body.get("notes");
+        String symptoms = body.get("symptoms");
+        String consultationNotes = body.get("consultationNotes");
+        AppointmentDTO appointment = doctorService.updateAppointmentConsultationNotes(appointmentId, notes, symptoms, consultationNotes);
         if (appointment == null) return ResponseEntity.badRequest().body("Appointment not found");
         return ResponseEntity.ok(appointment);
     }
@@ -68,6 +109,14 @@ public class DoctorController {
     public ResponseEntity<?> addPrescription(@PathVariable Long appointmentId, @RequestBody PrescriptionDTO dto) {
         PrescriptionResponseDTO prescription = doctorService.addPrescription(appointmentId, dto);
         if (prescription == null) return ResponseEntity.badRequest().body("Appointment not found");
+        return ResponseEntity.ok(prescription);
+    }
+
+    @GetMapping("/appointments/{appointmentId}/prescriptions")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public ResponseEntity<?> getPrescription(@PathVariable Long appointmentId) {
+        PrescriptionResponseDTO prescription = doctorService.getPrescription(appointmentId);
+        if (prescription == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(prescription);
     }
 }

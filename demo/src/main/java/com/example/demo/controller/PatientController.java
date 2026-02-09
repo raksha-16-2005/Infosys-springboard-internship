@@ -64,12 +64,44 @@ public class PatientController {
         return ResponseEntity.ok(patientService.myAppointments(user));
     }
 
+    @GetMapping("/appointments/upcoming")
+    @PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<?> getUpcomingAppointments() {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        return ResponseEntity.ok(patientService.getUpcomingAppointments(user));
+    }
+
+    @GetMapping("/appointments/{appointmentId}")
+    @PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<?> getAppointmentDetail(@PathVariable Long appointmentId) {
+        AppointmentDTO appointment = patientService.getAppointmentDetail(appointmentId);
+        if (appointment == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(appointment);
+    }
+
     @GetMapping("/prescriptions")
     @PreAuthorize("hasRole('PATIENT')")
     public ResponseEntity<?> getPrescriptions() {
         User user = getAuthenticatedUser();
         if (user == null) return ResponseEntity.status(401).body("Unauthorized");
         return ResponseEntity.ok(patientService.myPrescriptions(user));
+    }
+
+    @GetMapping("/prescriptions/{appointmentId}")
+    @PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<?> getPrescription(@PathVariable Long appointmentId) {
+        PrescriptionResponseDTO prescription = patientService.getPrescription(appointmentId);
+        if (prescription == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(prescription);
+    }
+
+    @GetMapping("/follow-ups")
+    @PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<?> getFollowUpPrescriptions() {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        return ResponseEntity.ok(patientService.getFollowUpPrescriptions(user));
     }
 }
 
