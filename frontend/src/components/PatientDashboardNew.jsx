@@ -104,7 +104,9 @@ export default function PatientDashboard() {
       setMessage('Profile saved successfully!');
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
-      setMessage('Error saving profile');
+      console.error('Save profile error:', err);
+      const serverMsg = err.response?.data || err.message || 'Error saving profile';
+      setMessage(typeof serverMsg === 'string' ? serverMsg : JSON.stringify(serverMsg));
     } finally {
       setLoading(false);
     }
@@ -191,8 +193,8 @@ export default function PatientDashboard() {
             className="grid grid-4 mb-4"
           >
             <motion.div variants={itemVariants} className="stat-card">
-              <div className="stat-icon" style={{ backgroundColor: '#dbeafe' }}>
-                <FiCalendar size={24} color="#0284c7" />
+              <div className="stat-icon" style={{ backgroundColor: '#ede9fe' }}>
+                <FiCalendar size={24} color="#7c3aed" />
               </div>
               <div className="stat-content">
                 <p className="stat-label">Upcoming</p>

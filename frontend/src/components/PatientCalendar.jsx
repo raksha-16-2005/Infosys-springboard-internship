@@ -34,14 +34,17 @@ export default function PatientCalendar({ appointments = [] }) {
   return (
     <div className="calendar-container">
       <div className="calendar-section">
-        <Calendar
-          value={selectedDate}
-          onChange={setSelectedDate}
-          tileClassName={({ date }) => getTileClass(date)}
-        />
+        <div className="calendar-wrapper glass-panel">
+          <Calendar
+            className="medical-calendar"
+            value={selectedDate}
+            onChange={setSelectedDate}
+            tileClassName={({ date }) => getTileClass(date)}
+          />
+        </div>
       </div>
 
-      <div className="appointments-timeline">
+      <div className="appointments-timeline appointment-details-card">
         <h3 className="timeline-title">
           {formatFullDate(selectedDate.toString())}
         </h3>

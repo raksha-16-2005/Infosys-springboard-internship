@@ -22,30 +22,32 @@
 
 /* Stat Cards */
 .stat-card {
-  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
-  border: 1px solid var(--border-light);
-  border-radius: 12px;
+  background: white;
+  border-radius: 16px;
   padding: 1.5rem;
   display: flex;
   align-items: center;
   gap: 1.5rem;
   transition: all 0.3s ease;
+  box-shadow: var(--shadow-sm);
+  border: none;
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--primary-color);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
 }
 
 .stat-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  background-color: var(--accent-lighter);
+  /* Default background */
 }
 
 .stat-content {
@@ -56,15 +58,17 @@
   font-size: 0.875rem;
   color: var(--text-light);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 0.25rem;
+  letter-spacing: 1px;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
 }
 
 .stat-value {
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 700;
   color: var(--text-dark);
   margin: 0;
+  line-height: 1;
 }
 
 /* Appointments List */
@@ -75,20 +79,27 @@
 }
 
 .appointment-item {
-  padding: 1rem;
-  border: 1px solid var(--border-light);
-  border-radius: 10px;
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--border-light);
+  /* Only bottom border for list items */
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   transition: all 0.3s ease;
   cursor: pointer;
+  background: transparent;
+}
+
+.appointment-item:last-child {
+  border-bottom: none;
 }
 
 .appointment-item:hover {
   background-color: var(--accent-lighter);
-  border-color: var(--primary-color);
+  padding-left: 1.5rem;
+  /* Slight shift effect */
 }
 
 .appointment-doctor {
@@ -108,7 +119,8 @@
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 1rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .doctor-info {

@@ -101,7 +101,9 @@ export default function PatientDashboard() {
       setTimeout(() => setMessage(''), 3000);
       fetchProfile();
     } catch (err) {
-      setMessage('Error saving profile');
+      console.error('Save profile error:', err);
+      const serverMsg = err.response?.data || err.message || 'Error saving profile';
+      setMessage(typeof serverMsg === 'string' ? serverMsg : JSON.stringify(serverMsg));
     } finally {
       setLoading(false);
     }

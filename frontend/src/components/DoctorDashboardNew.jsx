@@ -229,8 +229,8 @@ export default function DoctorDashboard() {
             className="grid grid-4 mb-4"
           >
             <motion.div variants={itemVariants} className="stat-card">
-              <div className="stat-icon" style={{ backgroundColor: '#dbeafe' }}>
-                <FiClock size={24} color="#0284c7" />
+              <div className="stat-icon" style={{ backgroundColor: '#ede9fe' }}>
+                <FiClock size={24} color="#7c3aed" />
               </div>
               <div className="stat-content">
                 <p className="stat-label">Today's</p>
