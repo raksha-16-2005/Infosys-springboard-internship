@@ -24,7 +24,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getUsername())
                 .password(user.getPassword())
-                .roles(user.getRole()) // Assuming role is a string like "USER", "DOCTOR"
+                .roles(user.getRole().name().replace("ROLE_", "")) // Spring will prefix with ROLE_
                 .build();
     }
 }

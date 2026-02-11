@@ -1,7 +1,9 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.SignupRequest;
+import com.example.demo.model.Role;
 import com.example.demo.model.User;
+import com.example.demo.model.UserStatus;
 import com.example.demo.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -33,11 +35,16 @@ public class UserService {
             return "Error: Email is already in use!";
         }
 
+        Role role = Role.valueOf(signupRequest.getRole());
+        UserStatus status = (role == Role.ROLE_DOCTOR) ? UserStatus.PENDING : UserStatus.ACTIVE;
+
         User user = new User(
                 signupRequest.getUsername(),
+                signupRequest.getName(),
                 signupRequest.getEmail(),
                 passwordEncoder.encode(signupRequest.getPassword()),
-                signupRequest.getRole()
+                role,
+                status
         );
 
         // Generate OTP as part of registration

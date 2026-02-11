@@ -15,12 +15,18 @@ public class PatientService {
     private final AppointmentRepository apptRepo;
     private final DoctorProfileRepository doctorProfileRepo;
     private final PrescriptionRepository prescriptionRepo;
+    private final EmailService emailService;
 
-    public PatientService(PatientProfileRepository profileRepo, AppointmentRepository apptRepo, DoctorProfileRepository doctorProfileRepo, PrescriptionRepository prescriptionRepo) {
+    public PatientService(PatientProfileRepository profileRepo,
+                          AppointmentRepository apptRepo,
+                          DoctorProfileRepository doctorProfileRepo,
+                          PrescriptionRepository prescriptionRepo,
+                          EmailService emailService) {
         this.profileRepo = profileRepo;
         this.apptRepo = apptRepo;
         this.doctorProfileRepo = doctorProfileRepo;
         this.prescriptionRepo = prescriptionRepo;
+        this.emailService = emailService;
     }
 
     public PatientProfileDTO getProfile(User user) {
@@ -71,15 +77,30 @@ public class PatientService {
         if (pProfile == null) return null;
         DoctorProfile dProfile = doctorProfileRepo.findById(doctorId).orElse(null);
         if (dProfile == null) return null;
-        
+
+        LocalDateTime slot = LocalDateTime.parse(req.getAppointmentDate());
+        if (apptRepo.existsByDoctorAndAppointmentDate(dProfile, slot)) {
+            return null;
+        }
+
         Appointment a = new Appointment();
         a.setPatient(pProfile);
         a.setDoctor(dProfile);
-        a.setAppointmentDate(LocalDateTime.parse(req.getAppointmentDate()));
+        a.setAppointmentDate(slot);
         a.setNotes(req.getNotes());
         a.setSymptoms(req.getSymptoms());
         a.setStatus(Appointment.Status.SCHEDULED);
         a = apptRepo.save(a);
+
+        if (patient.getEmail() != null) {
+            emailService.sendAppointmentBookedEmail(
+                    patient.getEmail(),
+                    pProfile.getFullName(),
+                    dProfile.getFullName(),
+                    a.getAppointmentDate()
+            );
+        }
+
         return convertToAppointmentDTO(a);
     }
 

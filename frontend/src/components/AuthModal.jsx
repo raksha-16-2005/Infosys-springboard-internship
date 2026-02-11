@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import axios from 'axios';
+import { loginStart, loginSuccess, loginFailure } from '../features/auth/authSlice';
 
-const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
+const AuthModal = ({ isOpen, onClose }) => {
     const navigate = useNavigate();
+    const dispatch = useDispatch();
     const [mode, setMode] = useState('login'); // 'login' | 'signup'
     const [loginMethod, setLoginMethod] = useState('otp'); // 'otp' | 'password'
     const [step, setStep] = useState(1); // 1: Email/Form, 2: OTP Verification (Login only)
@@ -36,17 +39,27 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
         onClose();
     };
 
+    const extractErrorMessage = (err, fallback) => {
+        const data = err?.response?.data;
+        if (!data) return fallback;
+        if (typeof data === 'string') return data;
+        if (typeof data.message === 'string') return data.message;
+        return fallback;
+    };
+
     // --- LOGIN FLOW (OTP) ---
     const handleRequestOtp = async (e) => {
         e.preventDefault();
         setLoading(true);
         setMessage(null);
         try {
-            await axios.post('/api/auth/request-otp', { email: formData.email });
+            const res = await axios.post('/api/auth/request-otp', { email: formData.email });
+            const api = res.data;
+            const text = typeof api === 'string' ? api : api.message || 'OTP sent to your email!';
             setStep(2);
-            setMessage({ type: 'success', text: 'OTP sent to your email!' });
+            setMessage({ type: 'success', text });
         } catch (err) {
-            setMessage({ type: 'error', text: err.response?.data || 'Failed to send OTP' });
+            setMessage({ type: 'error', text: extractErrorMessage(err, 'Failed to send OTP') });
         } finally {
             setLoading(false);
         }
@@ -57,17 +70,21 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
         setLoading(true);
         setMessage(null);
         try {
+            dispatch(loginStart());
             const res = await axios.post('/api/auth/verify-otp', {
                 email: formData.email,
                 otp: otp
             });
-            // Success!
-            localStorage.setItem('token', res.data.token);
-            localStorage.setItem('user', JSON.stringify(res.data));
-            onLoginSuccess(res.data);
+            const api = res.data;
+            if (!api.success) {
+                throw { response: { data: api } };
+            }
+            const payload = api.data; // JwtResponse
+            dispatch(loginSuccess(payload));
             handleClose();
         } catch (err) {
-            setMessage({ type: 'error', text: err.response?.data || 'Invalid OTP' });
+            dispatch(loginFailure(extractErrorMessage(err)));
+            setMessage({ type: 'error', text: extractErrorMessage(err, 'Invalid OTP') });
         } finally {
             setLoading(false);
         }
@@ -79,20 +96,31 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
         setLoading(true);
         setMessage(null);
         try {
+            // Map simple roles to backend enum values
+            let roleEnum = formData.role;
+            if (!roleEnum.startsWith('ROLE_')) {
+                roleEnum = `ROLE_${roleEnum}`;
+            }
+
             const res = await axios.post('/api/auth/register', {
                 username: formData.username,
+                name: formData.username, // use username as display name for now
                 email: formData.email,
                 password: formData.password,
-                role: formData.role
+                role: roleEnum
             });
-            setMessage({ type: 'success', text: res.data + ' Please switch to login.' });
+            const api = res.data;
+            const text = typeof api === 'string'
+                ? api
+                : (api.message || api.data || 'Registration successful');
+            setMessage({ type: 'success', text: text + ' Please switch to login.' });
             // Optional: Automatically switch to login
             setTimeout(() => {
                 setMode('login');
                 setMessage({ type: 'success', text: 'Account created. Please login with OTP.' });
             }, 1500);
         } catch (err) {
-            setMessage({ type: 'error', text: err.response?.data || 'Registration failed' });
+            setMessage({ type: 'error', text: extractErrorMessage(err, 'Registration failed') });
         } finally {
             setLoading(false);
         }
@@ -141,15 +169,26 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
 
                         {loginMethod === 'password' && (
                             <form onSubmit={async e=>{
-                                e.preventDefault(); setLoading(true); setMessage(null);
+                                e.preventDefault();
+                                setLoading(true);
+                                setMessage(null);
                                 try{
+                                    dispatch(loginStart());
                                     const res = await axios.post('/api/auth/login',{username: formData.username, password: formData.password});
-                                    localStorage.setItem('token', res.data.token);
-                                    localStorage.setItem('user', JSON.stringify(res.data));
-                                    onLoginSuccess(res.data);
+                                    const api = res.data;
+                                    if (!api.success) {
+                                        throw { response: { data: api } };
+                                    }
+                                    const payload = api.data; // JwtResponse
+                                    dispatch(loginSuccess(payload));
                                     handleClose();
-                                }catch(err){ setMessage({type:'error', text: err.response?.data || 'Login failed'}) }
-                                finally{ setLoading(false) }
+                                }catch(err){
+                                    dispatch(loginFailure(extractErrorMessage(err)));
+                                    setMessage({type:'error', text: extractErrorMessage(err, 'Login failed')});
+                                }
+                                finally{
+                                    setLoading(false);
+                                }
                             }}>
                                 <div className="form-group">
                                     <label>Username</label>

@@ -1,22 +1,39 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { FiUsers, FiClock, FiCheckSquare, FiFileText, FiEdit2 } from 'react-icons/fi';
 import PrescriptionView from './PrescriptionView';
 import '../styles/dashboard.css';
 
+import { fetchUserProfile, updateUserProfile, clearUserMessages } from '../features/user/userSlice';
+import {
+  fetchDoctorAppointments,
+  fetchTodayAppointments,
+  updateAppointmentStatus,
+  createPrescription,
+  clearAppointmentMessages
+} from '../features/appointment/appointmentSlice';
+
 export default function DoctorDashboard() {
+  const dispatch = useDispatch();
+
+  // Redux State
+  const { profile, loading: userLoading, successMessage: userSuccess, error: userError } = useSelector((state) => state.user);
+  const {
+    appointments,
+    todayAppointments,
+    loading: aptLoading,
+    successMessage: aptSuccess,
+    error: aptError
+  } = useSelector((state) => state.appointment);
+
   const [activeTab, setActiveTab] = useState('overview');
-  const [profile, setProfile] = useState(null);
-  const [appointments, setAppointments] = useState([]);
-  const [todayAppointments, setTodayAppointments] = useState([]);
-  const [completedAppointments, setCompletedAppointments] = useState([]);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [selectedPrescription, setSelectedPrescription] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
   const [showPrescriptionForm, setShowPrescriptionForm] = useState(false);
+  const [message, setMessage] = useState('');
 
+  // Local form state
   const [formData, setFormData] = useState({
     fullName: '',
     specialization: '',
@@ -35,120 +52,92 @@ export default function DoctorDashboard() {
     notes: ''
   });
 
-  const token = localStorage.getItem('token');
-  const storedUser = (() => { try { return JSON.parse(localStorage.getItem('user')||'null'); } catch (e) { return null; } })();
+  const storedUser = (() => { try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch (e) { return null; } })();
   const userRole = storedUser?.role || '';
 
   useEffect(() => {
-    fetchProfile();
-    fetchAppointments();
-    fetchTodayAppointments();
-  }, []);
+    dispatch(fetchUserProfile());
+    dispatch(fetchDoctorAppointments());
+    dispatch(fetchTodayAppointments());
+  }, [dispatch]);
 
-  const fetchProfile = async () => {
-    try {
-      const res = await axios.get('/api/doctor/profile', {
-        headers: { Authorization: `Bearer ${token}` }
+  // Sync profile
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        fullName: profile.fullName || '',
+        specialization: profile.specialization || '',
+        qualification: profile.qualification || '',
+        experienceYears: profile.experienceYears || '',
+        hospitalName: profile.hospitalName || '',
+        phone: profile.phone || '',
+        bio: profile.bio || ''
       });
-      setProfile(res.data);
-      setFormData(res.data);
-    } catch (e) {
-      console.error('Profile fetch error', e);
     }
-  };
+  }, [profile]);
 
-  const fetchAppointments = async () => {
-    try {
-      const res = await axios.get('/api/doctor/appointments', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setAppointments(res.data || []);
-      setCompletedAppointments(res.data?.filter(a => a.status === 'COMPLETED') || []);
-    } catch (e) {
-      console.error('Appointments fetch error', e);
-    }
-  };
+  // Handle messages
+  useEffect(() => {
+    const success = userSuccess || aptSuccess;
+    const error = userError || aptError;
 
-  const fetchTodayAppointments = async () => {
-    try {
-      const res = await axios.get('/api/doctor/appointments/today', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setTodayAppointments(res.data || []);
-    } catch (e) {
-      console.error('Today appointments fetch error', e);
+    if (success) {
+      setMessage(success);
+      if (aptSuccess) {
+        // If prescription was created successfully, close the form
+        if (showPrescriptionForm) {
+          setShowPrescriptionForm(false);
+          setPrescriptionForm({
+            diagnosis: '',
+            medicinesJson: '[]',
+            testsRecommended: '',
+            followUpDate: '',
+            notes: ''
+          });
+          // Re-fetch appointments to ensure data consistency if needed
+          dispatch(fetchDoctorAppointments());
+        }
+        // Refetch if status updated
+        dispatch(fetchDoctorAppointments());
+        dispatch(fetchTodayAppointments());
+      }
+
+      const timer = setTimeout(() => {
+        setMessage('');
+        if (userSuccess) dispatch(clearUserMessages());
+        if (aptSuccess) dispatch(clearAppointmentMessages());
+      }, 3000);
+      return () => clearTimeout(timer);
     }
-  };
+
+    if (error) {
+      setMessage(typeof error === 'string' ? error : 'An error occurred');
+      const timer = setTimeout(() => {
+        setMessage('');
+        if (userError) dispatch(clearUserMessages());
+        if (aptError) dispatch(clearAppointmentMessages());
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [userSuccess, userError, aptSuccess, aptError, dispatch, showPrescriptionForm]);
+
 
   const saveProfile = async () => {
     if (!userRole || !userRole.toUpperCase().includes('DOCTOR')) {
       setMessage('You must be logged in as a doctor to save this profile');
       return;
     }
-    setLoading(true);
-    setMessage('');
-    try {
-      await axios.put('/api/doctor/profile', formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setMessage('Profile saved successfully!');
-      setTimeout(() => setMessage(''), 3000);
-      fetchProfile();
-    } catch (err) {
-      console.error('Save profile error:', err);
-      const serverMsg = err?.response?.data || err.message || 'Error saving profile';
-      setMessage(typeof serverMsg === 'string' ? serverMsg : JSON.stringify(serverMsg));
-    } finally {
-      setLoading(false);
-    }
+    dispatch(updateUserProfile(formData));
   };
 
-  const updateAppointmentStatus = async (appointmentId, status) => {
-    setLoading(true);
-    try {
-      await axios.put(
-        `/api/doctor/appointments/${appointmentId}/status`,
-        { status },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setMessage('Status updated successfully!');
-      setTimeout(() => setMessage(''), 3000);
-      fetchAppointments();
-      fetchTodayAppointments();
-      setSelectedAppointment(null);
-    } catch (err) {
-      setMessage('Error updating status');
-    } finally {
-      setLoading(false);
-    }
+  const handleUpdateStatus = async (appointmentId, status) => {
+    dispatch(updateAppointmentStatus({ id: appointmentId, status }));
+    setSelectedAppointment(null);
   };
 
-  const savePrescription = async () => {
+  const handleSavePrescription = async () => {
     if (!selectedAppointment) return;
-    setLoading(true);
-    try {
-      const res = await axios.post(
-        `/api/doctor/appointments/${selectedAppointment.id}/prescriptions`,
-        prescriptionForm,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setMessage('Prescription saved successfully!');
-      setSelectedPrescription(res.data);
-      setShowPrescriptionForm(false);
-      setPrescriptionForm({
-        diagnosis: '',
-        medicinesJson: '[]',
-        testsRecommended: '',
-        followUpDate: '',
-        notes: ''
-      });
-      setTimeout(() => setMessage(''), 3000);
-      fetchAppointments();
-    } catch (err) {
-      setMessage('Error saving prescription');
-    } finally {
-      setLoading(false);
-    }
+    dispatch(createPrescription({ appointmentId: selectedAppointment.id, data: prescriptionForm }));
   };
 
   const handleInputChange = (e) => {
@@ -184,6 +173,9 @@ export default function DoctorDashboard() {
     }
   };
 
+  const completedAppointments = appointments.filter(a => a.status === 'COMPLETED');
+  const isLoading = userLoading || aptLoading;
+
   return (
     <div className="dashboard-container">
       <motion.div
@@ -202,7 +194,7 @@ export default function DoctorDashboard() {
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className={`alert alert-${message.includes('success') ? 'success' : 'error'}`}
+          className={`alert alert-${message.toLowerCase().includes('success') ? 'success' : 'error'}`}
         >
           {message}
         </motion.div>
@@ -336,7 +328,7 @@ export default function DoctorDashboard() {
                   <div className="button-group">
                     <select
                       value={selectedAppointment.status}
-                      onChange={(e) => updateAppointmentStatus(selectedAppointment.id, e.target.value)}
+                      onChange={(e) => handleUpdateStatus(selectedAppointment.id, e.target.value)}
                       className="form-select"
                     >
                       <option value="SCHEDULED">Scheduled</option>
@@ -478,10 +470,10 @@ export default function DoctorDashboard() {
           </div>
           <button
             onClick={saveProfile}
-            disabled={loading}
+            disabled={isLoading}
             className="btn btn-primary btn-block"
           >
-            {loading ? 'Saving...' : 'Save Profile'}
+            {isLoading ? 'Saving...' : 'Save Profile'}
           </button>
         </motion.div>
       )}
@@ -544,11 +536,11 @@ export default function DoctorDashboard() {
             </div>
             <div style={{ display: 'flex', gap: '1rem' }}>
               <button
-                onClick={savePrescription}
-                disabled={loading}
+                onClick={handleSavePrescription}
+                disabled={isLoading}
                 className="btn btn-primary btn-block"
               >
-                {loading ? 'Saving...' : 'Save Prescription'}
+                {isLoading ? 'Saving...' : 'Save Prescription'}
               </button>
               <button
                 onClick={() => setShowPrescriptionForm(false)}

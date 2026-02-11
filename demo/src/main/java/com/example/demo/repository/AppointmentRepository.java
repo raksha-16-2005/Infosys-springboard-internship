@@ -25,4 +25,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     
     @Query("SELECT a FROM Appointment a WHERE a.patient = :patient AND a.appointmentDate >= :date ORDER BY a.appointmentDate ASC")
     List<Appointment> findUpcomingByPatient(@Param("patient") PatientProfile patient, @Param("date") LocalDateTime date);
+
+    boolean existsByDoctorAndAppointmentDate(DoctorProfile doctor, LocalDateTime appointmentDate);
 }

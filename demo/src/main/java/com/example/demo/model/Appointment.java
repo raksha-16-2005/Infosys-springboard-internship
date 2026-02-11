@@ -41,6 +41,8 @@ public class Appointment {
     @OneToOne(mappedBy = "appointment", cascade = CascadeType.ALL)
     private Prescription prescription;
     
+    private boolean reminderSent = false;
+
     private LocalDateTime createdAt;
     
     @PrePersist
@@ -67,6 +69,8 @@ public class Appointment {
     public void setConsultationNotes(String cn){this.consultationNotes=cn;}
     public Prescription getPrescription(){return prescription;}
     public void setPrescription(Prescription p){this.prescription=p;}
+    public boolean isReminderSent() { return reminderSent; }
+    public void setReminderSent(boolean reminderSent) { this.reminderSent = reminderSent; }
     public LocalDateTime getCreatedAt(){return createdAt;}
     public void setCreatedAt(LocalDateTime c){this.createdAt=c;}
 }

@@ -1,22 +1,38 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
-import { FiCalendar, FiFileText, FiActivity, FiArrowRight, FiClock, FiMapPin, FiUser } from 'react-icons/fi';
+import { FiCalendar, FiFileText, FiActivity, FiArrowRight, FiClock } from 'react-icons/fi';
 import PrescriptionView from './PrescriptionView';
 import PatientCalendar from './PatientCalendar';
 import '../styles/dashboard.css';
 
+import { fetchUserProfile, updateUserProfile, clearUserMessages } from '../features/user/userSlice';
+import {
+  fetchPatientAppointments,
+  fetchUpcomingAppointments,
+  fetchPatientPrescriptions,
+  fetchPatientFollowUps,
+} from '../features/appointment/appointmentSlice';
+
 export default function PatientDashboard() {
+  const dispatch = useDispatch();
+
+  // Redux State
+  const { profile, loading: userLoading, successMessage: userSuccess, error: userError } = useSelector((state) => state.user);
+  const {
+    appointments,
+    upcomingAppointments,
+    prescriptions,
+    followUps,
+    loading: aptLoading
+  } = useSelector((state) => state.appointment);
+
   const [activeTab, setActiveTab] = useState('overview');
-  const [profile, setProfile] = useState(null);
-  const [appointments, setAppointments] = useState([]);
-  const [upcomingAppointments, setUpcomingAppointments] = useState([]);
-  const [prescriptions, setPrescriptions] = useState([]);
-  const [followUps, setFollowUps] = useState([]);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [selectedPrescription, setSelectedPrescription] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+
+  // Local form state initialized from Redux profile
   const [formData, setFormData] = useState({
     fullName: '',
     age: '',
@@ -28,88 +44,52 @@ export default function PatientDashboard() {
     medicalHistory: ''
   });
 
-  const token = localStorage.getItem('token');
-
   useEffect(() => {
-    fetchProfile();
-    fetchAppointments();
-    fetchUpcomingAppointments();
-    fetchPrescriptions();
-    fetchFollowUps();
-  }, []);
+    dispatch(fetchUserProfile());
+    dispatch(fetchPatientAppointments());
+    dispatch(fetchUpcomingAppointments());
+    dispatch(fetchPatientPrescriptions());
+    dispatch(fetchPatientFollowUps());
+  }, [dispatch]);
 
-  const fetchProfile = async () => {
-    try {
-      const res = await axios.get('/api/patient/profile', {
-        headers: { Authorization: `Bearer ${token}` }
+  // Sync profile to local form state when profile loads
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        fullName: profile.fullName || '',
+        age: profile.age || '',
+        gender: profile.gender || '',
+        bloodGroup: profile.bloodGroup || '',
+        phone: profile.phone || '',
+        address: profile.address || '',
+        emergencyContact: profile.emergencyContact || '',
+        medicalHistory: profile.medicalHistory || ''
       });
-      setProfile(res.data);
-      setFormData(res.data);
-    } catch (e) {
-      console.error('Error fetching profile:', e);
     }
-  };
+  }, [profile]);
 
-  const fetchAppointments = async () => {
-    try {
-      const res = await axios.get('/api/patient/appointments', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setAppointments(res.data || []);
-    } catch (e) {
-      console.error('Error fetching appointments:', e);
+  // Handle Redux messages
+  useEffect(() => {
+    if (userSuccess) {
+      setMessage(userSuccess);
+      const timer = setTimeout(() => {
+        setMessage('');
+        dispatch(clearUserMessages());
+      }, 3000);
+      return () => clearTimeout(timer);
     }
-  };
-
-  const fetchUpcomingAppointments = async () => {
-    try {
-      const res = await axios.get('/api/patient/appointments/upcoming', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setUpcomingAppointments(res.data || []);
-    } catch (e) {
-      console.error('Error fetching upcoming:', e);
+    if (userError) {
+      setMessage(typeof userError === 'string' ? userError : 'Error updating profile');
+      const timer = setTimeout(() => {
+        setMessage('');
+        dispatch(clearUserMessages());
+      }, 3000);
+      return () => clearTimeout(timer);
     }
-  };
-
-  const fetchPrescriptions = async () => {
-    try {
-      const res = await axios.get('/api/patient/prescriptions', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setPrescriptions(res.data || []);
-    } catch (e) {
-      console.error('Error fetching prescriptions:', e);
-    }
-  };
-
-  const fetchFollowUps = async () => {
-    try {
-      const res = await axios.get('/api/patient/follow-ups', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setFollowUps(res.data || []);
-    } catch (e) {
-      console.error('Error fetching follow-ups:', e);
-    }
-  };
+  }, [userSuccess, userError, dispatch]);
 
   const saveProfile = async () => {
-    setLoading(true);
-    setMessage('');
-    try {
-      await axios.put('/api/patient/profile', formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setMessage('Profile saved successfully!');
-      setTimeout(() => setMessage(''), 3000);
-    } catch (err) {
-      console.error('Save profile error:', err);
-      const serverMsg = err.response?.data || err.message || 'Error saving profile';
-      setMessage(typeof serverMsg === 'string' ? serverMsg : JSON.stringify(serverMsg));
-    } finally {
-      setLoading(false);
-    }
+    dispatch(updateUserProfile(formData));
   };
 
   const handleInputChange = (e) => {
@@ -148,6 +128,8 @@ export default function PatientDashboard() {
     }
   };
 
+  const isLoading = userLoading || aptLoading;
+
   return (
     <div className="dashboard-container">
       <motion.div
@@ -166,7 +148,7 @@ export default function PatientDashboard() {
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className={`alert alert-${message.includes('success') ? 'success' : 'error'}`}
+          className={`alert alert-${message.toLowerCase().includes('success') ? 'success' : 'error'}`}
         >
           {message}
         </motion.div>
@@ -444,10 +426,10 @@ export default function PatientDashboard() {
           </div>
           <button
             onClick={saveProfile}
-            disabled={loading}
+            disabled={isLoading}
             className="btn btn-primary btn-block mt-4"
           >
-            {loading ? 'Saving...' : 'Save Profile'}
+            {isLoading ? 'Saving...' : 'Save Profile'}
           </button>
         </motion.div>
       )}

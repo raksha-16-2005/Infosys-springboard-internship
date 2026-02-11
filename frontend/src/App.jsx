@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Routes, Route, Link, useNavigate } from 'react-router-dom'
+import React, { useState } from 'react';
+import { Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
 import AuthModal from './components/AuthModal';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 import PatientDashboardNew from './components/PatientDashboardNew';
 import DoctorDashboardNew from './components/DoctorDashboardNew';
+import ProtectedRoute from './components/ProtectedRoute';
+import AdminDashboard from './components/AdminDashboard';
+import Unauthorized from './components/Unauthorized';
+import { logout } from './features/auth/authSlice';
 import './styles/global.css';
 import './styles/dashboard.css';
 import './styles/calendar.css';
@@ -12,26 +17,13 @@ import './styles/prescription.css';
 
 function App() {
     const [isAuthOpen, setAuthOpen] = useState(false);
-    const [user, setUser] = useState(null);
-
-    useEffect(() => {
-        // Check for existing session
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
-        }
-    }, []);
-
-    const handleLoginSuccess = (userData) => {
-        setUser(userData);
-    };
+    const dispatch = useDispatch();
+    const { user } = useSelector((state) => state.auth);
 
     const navigate = useNavigate();
 
     const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setUser(null);
+        dispatch(logout());
         navigate('/');
     };
 
@@ -197,12 +189,18 @@ function App() {
                                     Hi, {user.username} ({user.role})
                                 </span>
                                 <button className="btn btn-secondary" onClick={handleLogout}>Logout</button>
-                                <a
-                                    href={user.role && user.role.includes('PATIENT') ? '/patient' : '/doctor'}
-                                    className="btn btn-primary"
-                                >
-                                    Open Dashboard
-                                </a>
+                                {user.role === 'ADMIN' ? (
+                                    <a href="/admin" className="btn btn-primary">
+                                        Open Admin
+                                    </a>
+                                ) : (
+                                    <a
+                                        href={user.role && user.role.includes('PATIENT') ? '/patient' : '/doctor'}
+                                        className="btn btn-primary"
+                                    >
+                                        Open Dashboard
+                                    </a>
+                                )}
                             </>
                         ) : (
                             <>
@@ -219,15 +217,37 @@ function App() {
                     <Route path="/" element={<HomePage />} />
                     <Route path="/forgot-password" element={<ForgotPassword />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
-                    <Route path="/patient" element={<PatientDashboardNew />} />
-                    <Route path="/doctor" element={<DoctorDashboardNew />} />
+                    <Route
+                        path="/patient"
+                        element={
+                            <ProtectedRoute role="PATIENT">
+                                <PatientDashboardNew />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/doctor"
+                        element={
+                            <ProtectedRoute role="DOCTOR">
+                                <DoctorDashboardNew />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/admin"
+                        element={
+                            <ProtectedRoute role="ADMIN">
+                                <AdminDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route path="/unauthorized" element={<Unauthorized />} />
                 </Routes>
             </div>
 
             <AuthModal
                 isOpen={isAuthOpen}
                 onClose={() => setAuthOpen(false)}
-                onLoginSuccess={handleLoginSuccess}
             />
         </div>
     )

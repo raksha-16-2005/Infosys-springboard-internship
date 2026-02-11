@@ -1,13 +1,12 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.JwtResponse;
-import com.example.demo.dto.LoginRequest;
-import com.example.demo.dto.OtpRequest;
-import com.example.demo.dto.OtpVerifyRequest;
-import com.example.demo.dto.SignupRequest;
+import com.example.demo.dto.*;
+import com.example.demo.exception.BusinessException;
 import com.example.demo.model.User;
+import com.example.demo.model.UserStatus;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.security.JwtUtils;
+import com.example.demo.service.AuditLogService;
 import com.example.demo.service.EmailService;
 import com.example.demo.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,13 +43,15 @@ public class AuthController {
     @Autowired
     EmailService emailService;
 
+    @Autowired
+    AuditLogService auditLogService;
+
     @PostMapping("/login")
-    public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<ApiResponse<JwtResponse>> authenticateUser(@RequestBody LoginRequest loginRequest) {
 
         String identifier = loginRequest.getUsername();
-        // allow users to login with email as well as username
         if (identifier != null && identifier.contains("@")) {
-            java.util.Optional<com.example.demo.model.User> u = userRepository.findByEmail(identifier);
+            Optional<User> u = userRepository.findByEmail(identifier);
             if (u.isPresent()) identifier = u.get().getUsername();
         }
 
@@ -58,37 +59,46 @@ public class AuthController {
                 new UsernamePasswordAuthenticationToken(identifier, loginRequest.getPassword()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new BusinessException("User not found"));
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new BusinessException("Account is not active. Current status: " + user.getStatus());
+        }
+
         String jwt = jwtUtils.generateJwtToken(authentication);
 
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String role = "";
         if (userDetails.getAuthorities() != null && !userDetails.getAuthorities().isEmpty()) {
             role = userDetails.getAuthorities().iterator().next().getAuthority();
             if (role.startsWith("ROLE_")) role = role.substring(5);
         }
 
-        return ResponseEntity.ok(new JwtResponse(jwt,
-                                                 userDetails.getUsername(),
-                                                 role));
+        auditLogService.log(user.getUsername(), "LOGIN", "User logged in");
+
+        JwtResponse jwtResponse = new JwtResponse(jwt, userDetails.getUsername(), role);
+        return ResponseEntity.ok(ApiResponse.ok("Login successful", jwtResponse));
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody SignupRequest signUpRequest) {
+    public ResponseEntity<ApiResponse<String>> registerUser(@RequestBody SignupRequest signUpRequest) {
         String result = userService.registerUser(signUpRequest);
         if (result.startsWith("Error")) {
-            return ResponseEntity.badRequest().body(result);
+            return ResponseEntity.badRequest().body(ApiResponse.fail(result));
         }
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(ApiResponse.ok("Registration successful", result));
     }
 
     /**
      * Request an email OTP for passwordless authentication.
      */
     @PostMapping("/request-otp")
-    public ResponseEntity<?> requestOtp(@RequestBody OtpRequest request) {
+    public ResponseEntity<ApiResponse<String>> requestOtp(@RequestBody OtpRequest request) {
         Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
         if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body("Error: User with this email does not exist");
+            return ResponseEntity.badRequest().body(ApiResponse.fail("User with this email does not exist"));
         }
 
         User user = userOpt.get();
@@ -100,41 +110,49 @@ public class AuthController {
 
         emailService.sendOtpEmail(user.getEmail(), otp);
 
-        return ResponseEntity.ok("OTP sent to registered email address");
+        return ResponseEntity.ok(ApiResponse.ok("OTP sent to registered email address", null));
     }
 
     /**
      * Verify a previously sent email OTP and issue a JWT token.
      */
     @PostMapping("/verify-otp")
-    public ResponseEntity<?> verifyOtp(@RequestBody OtpVerifyRequest request) {
+    public ResponseEntity<ApiResponse<JwtResponse>> verifyOtp(@RequestBody OtpVerifyRequest request) {
         Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
         if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body("Error: User with this email does not exist");
+            return ResponseEntity.badRequest().body(ApiResponse.fail("User with this email does not exist"));
         }
 
         User user = userOpt.get();
 
         if (user.getOtpCode() == null || user.getOtpExpiry() == null) {
-            return ResponseEntity.badRequest().body("Error: No OTP requested for this user");
+            return ResponseEntity.badRequest().body(ApiResponse.fail("No OTP requested for this user"));
         }
 
         if (user.getOtpExpiry().isBefore(LocalDateTime.now())) {
-            return ResponseEntity.badRequest().body("Error: OTP has expired");
+            return ResponseEntity.badRequest().body(ApiResponse.fail("OTP has expired"));
         }
 
         if (!user.getOtpCode().equals(request.getOtp())) {
-            return ResponseEntity.badRequest().body("Error: Invalid OTP");
+            return ResponseEntity.badRequest().body(ApiResponse.fail("Invalid OTP"));
         }
 
-        // Clear OTP after successful verification
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.fail("Account is not active. Current status: " + user.getStatus()));
+        }
+
         user.setOtpCode(null);
         user.setOtpExpiry(null);
         userRepository.save(user);
 
-        String jwt = jwtUtils.generateTokenFromUsername(user.getUsername());
-        String role = user.getRole();
+        String jwt = jwtUtils.generateTokenForUser(user.getUsername(), user.getRole().name());
+        String role = user.getRole().name().replace("ROLE_", "");
 
-        return ResponseEntity.ok(new JwtResponse(jwt, user.getUsername(), role));
+        auditLogService.log(user.getUsername(), "LOGIN_OTP", "User logged in via OTP");
+
+        JwtResponse jwtResponse = new JwtResponse(jwt, user.getUsername(), role);
+        return ResponseEntity.ok(ApiResponse.ok("OTP verified", jwtResponse));
     }
 }
+

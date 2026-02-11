@@ -1,11 +1,6 @@
 package com.example.demo.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
@@ -19,14 +14,29 @@ public class User {
     @Column(unique = true, nullable = false)
     private String username;
 
+    /**
+     * Display name for greetings and profile.
+     */
+    @Column(nullable = false)
+    private String name;
+
     @Column(unique = true, nullable = false)
     private String email;
 
     @Column(nullable = false, length = 255)
     private String password;
 
-    @Column(nullable = false)
-    private String role;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private Role role;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private UserStatus status = UserStatus.PENDING;
+
+    private String specialization;
+    private String phone;
+    private String address;
 
     private String otpCode;
     private LocalDateTime otpExpiry;
@@ -34,11 +44,13 @@ public class User {
     public User() {
     }
 
-    public User(String username, String email, String password, String role) {
+    public User(String username, String name, String email, String password, Role role, UserStatus status) {
         this.username = username;
+        this.name = name;
         this.email = email;
         this.password = password;
         this.role = role;
+        this.status = status;
     }
 
     public Long getId() {
@@ -57,6 +69,14 @@ public class User {
         this.username = username;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public String getEmail() {
         return email;
     }
@@ -73,12 +93,44 @@ public class User {
         this.password = password;
     }
 
-    public String getRole() {
+    public Role getRole() {
         return role;
     }
 
-    public void setRole(String role) {
+    public void setRole(Role role) {
         this.role = role;
+    }
+
+    public UserStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(UserStatus status) {
+        this.status = status;
+    }
+
+    public String getSpecialization() {
+        return specialization;
+    }
+
+    public void setSpecialization(String specialization) {
+        this.specialization = specialization;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
     }
 
     public String getOtpCode() {
@@ -97,3 +149,4 @@ public class User {
         this.otpExpiry = otpExpiry;
     }
 }
+
