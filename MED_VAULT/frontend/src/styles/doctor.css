@@ -1,0 +1,398 @@
+@import url('https://fonts.googleapis.com/css2?family=Karla:wght@400;500;600;700&family=Bitter:wght@400;600&display=swap');
+
+.doctor-shell {
+  display: flex;
+  min-height: 100vh;
+  background: radial-gradient(circle at top right, #e0f2fe 0%, #f8fafc 35%, #fef3c7 100%);
+  color: #0f172a;
+  font-family: 'Karla', 'Bitter', serif;
+}
+
+.doctor-sidebar {
+  width: 260px;
+  background: linear-gradient(160deg, #0f172a, #1e293b 65%, #0f172a);
+  color: #e2e8f0;
+  padding: 28px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.doctor-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.doctor-brand h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.doctor-brand p {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.doctor-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.doctor-nav button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: none;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.12);
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.doctor-nav button:hover {
+  transform: translateX(4px);
+  background: rgba(148, 163, 184, 0.22);
+}
+
+.doctor-nav button.active {
+  background: #38bdf8;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.doctor-nav button.logout {
+  margin-top: 6px;
+  background: rgba(239, 68, 68, 0.2);
+  color: #fecaca;
+}
+
+.doctor-sidebar-footer {
+  margin-top: auto;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 14px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #cbd5f5;
+}
+
+.doctor-float-icons {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  font-size: 1.5rem;
+  margin-bottom: 10px;
+}
+
+.doctor-float {
+  animation: float 3.2s ease-in-out infinite;
+}
+
+.doctor-float.delay {
+  animation-delay: 0.6s;
+}
+
+.doctor-float.delay-2 {
+  animation-delay: 1.2s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.doctor-main {
+  flex: 1;
+  padding: 32px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.doctor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+
+.doctor-header h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.muted {
+  color: #64748b;
+}
+
+.doctor-profile-chip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px 14px;
+  border-radius: 14px;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.1);
+}
+
+.doctor-profile-chip img,
+.doctor-profile-placeholder {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.doctor-profile-image-large {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.doctor-profile-placeholder {
+  display: grid;
+  place-items: center;
+  background: #0f172a;
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+.doctor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.doctor-message {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  color: #166534;
+  padding: 10px 16px;
+  border-radius: 10px;
+}
+
+.doctor-card {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 20px 34px rgba(15, 23, 42, 0.08);
+}
+
+.doctor-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.doctor-grid-2 {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.doctor-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.doctor-table th,
+.doctor-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.doctor-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.doctor-actions button {
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.doctor-actions .primary {
+  background: #0ea5e9;
+  color: #fff;
+}
+
+.doctor-actions .danger {
+  background: #ef4444;
+  color: #fff;
+}
+
+.doctor-actions .ghost {
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.doctor-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: grid;
+  place-items: center;
+  z-index: 60;
+}
+
+.doctor-modal-card {
+  background: #fff;
+  padding: 24px;
+  border-radius: 18px;
+  width: min(520px, 92%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.doctor-modal-card .primary,
+.doctor-overlay-card .primary {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  background: #0ea5e9;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.doctor-calendar-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) 1fr;
+  gap: 24px;
+}
+
+.doctor-calendar-card {
+  background: #fff;
+  padding: 16px;
+  border-radius: 18px;
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.08);
+}
+
+.doctor-calendar-legend {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.doctor-legend::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.doctor-legend.accepted::before { background: #22c55e; }
+.doctor-legend.pending::before { background: #f59e0b; }
+.doctor-legend.rejected::before { background: #ef4444; }
+
+.doctor-profile-form {
+  display: grid;
+  gap: 14px;
+}
+
+.doctor-profile-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.doctor-profile-form input,
+.doctor-profile-form textarea {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.doctor-profile-form button {
+  align-self: flex-start;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  background: #0ea5e9;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.doctor-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  display: grid;
+  place-items: center;
+  z-index: 80;
+}
+
+.doctor-overlay-card {
+  background: #fff;
+  padding: 28px;
+  border-radius: 18px;
+  width: min(520px, 92%);
+}
+
+.doctor-note-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.doctor-note-item {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.15);
+}
+
+.react-calendar__tile.doctor-accepted {
+  background: rgba(34, 197, 94, 0.25) !important;
+  border-radius: 8px;
+}
+
+.react-calendar__tile.doctor-pending {
+  background: rgba(245, 158, 11, 0.25) !important;
+  border-radius: 8px;
+}
+
+.react-calendar__tile.doctor-rejected {
+  background: rgba(239, 68, 68, 0.25) !important;
+  border-radius: 8px;
+}
+
+@media (max-width: 1024px) {
+  .doctor-shell {
+    flex-direction: column;
+  }
+
+  .doctor-sidebar {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+  }
+
+  .doctor-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .doctor-main {
+    padding: 24px;
+  }
+
+  .doctor-calendar-grid {
+    grid-template-columns: 1fr;
+  }
+}
