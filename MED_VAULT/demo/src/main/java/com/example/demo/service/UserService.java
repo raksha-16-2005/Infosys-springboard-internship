@@ -1,7 +1,11 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.SignupRequest;
+import com.example.demo.model.DoctorProfile;
+import com.example.demo.model.PatientProfile;
 import com.example.demo.model.User;
+import com.example.demo.repository.DoctorProfileRepository;
+import com.example.demo.repository.PatientProfileRepository;
 import com.example.demo.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,6 +25,12 @@ public class UserService {
 
     @Autowired
     EmailService emailService;
+
+    @Autowired
+    PatientProfileRepository patientProfileRepository;
+
+    @Autowired
+    DoctorProfileRepository doctorProfileRepository;
 
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -47,9 +57,42 @@ public class UserService {
 
         userRepository.save(user);
 
+        createDefaultProfileForRole(user);
+
         // Send OTP email to the registered address
         emailService.sendOtpEmail(user.getEmail(), otp);
 
         return "User registered successfully! OTP sent to email.";
+    }
+
+    private void createDefaultProfileForRole(User user) {
+        if (user == null || user.getRole() == null) {
+            return;
+        }
+
+        String normalizedRole = user.getRole().toUpperCase();
+
+        if (normalizedRole.endsWith("PATIENT")) {
+            if (patientProfileRepository.findByUser(user).isEmpty()) {
+                PatientProfile profile = new PatientProfile();
+                profile.setUser(user);
+                profile.setFullName(user.getFullName() != null ? user.getFullName() : user.getName());
+                profile.setPhone(user.getPhone());
+                profile.setAddress(user.getAddress());
+                patientProfileRepository.save(profile);
+            }
+            return;
+        }
+
+        if (normalizedRole.endsWith("DOCTOR")) {
+            if (doctorProfileRepository.findByUser(user).isEmpty()) {
+                DoctorProfile profile = new DoctorProfile();
+                profile.setUser(user);
+                profile.setFullName(user.getFullName() != null ? user.getFullName() : user.getName());
+                profile.setPhone(user.getPhone());
+                profile.setSpecialization(user.getSpecialization());
+                doctorProfileRepository.save(profile);
+            }
+        }
     }
 }

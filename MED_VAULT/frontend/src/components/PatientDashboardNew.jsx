@@ -14,13 +14,14 @@ import {
   FiPhone,
   FiMail,
   FiSearch,
+  FiMenu,
   FiX,
   FiDownload,
   FiCheckCircle,
   FiXCircle,
   FiAlertCircle
 } from 'react-icons/fi';
-import { FaStethoscope, FaRobot, FaCalendarAlt, FaHeartbeat, FaHospital } from 'react-icons/fa';
+import { FaStethoscope, FaCalendarAlt, FaHeartbeat, FaHospital } from 'react-icons/fa';
 import PrescriptionView from './PrescriptionView';
 import 'react-calendar/dist/Calendar.css';
 import '../styles/patient.css';
@@ -29,6 +30,7 @@ const navItems = [
   { key: 'dashboard', label: 'Dashboard', icon: FiHome },
   { key: 'bookAppointment', label: 'Book Appointment', icon: FaCalendarAlt },
   { key: 'appointments', label: 'My Appointments', icon: FiFileText },
+  { key: 'feedback', label: 'Feedback', icon: FiCheckCircle },
   { key: 'medicalRecords', label: 'Medical Records', icon: FaStethoscope },
   { key: 'calendar', label: 'Calendar', icon: FiCalendar },
   { key: 'profile', label: 'Edit Profile', icon: FiSettings }
@@ -43,6 +45,7 @@ export default function PatientDashboard() {
   const [filteredDoctors, setFilteredDoctors] = useState([]);
   const [medicalRecords, setMedicalRecords] = useState([]);
   const [prescriptions, setPrescriptions] = useState([]);
+  const [feedbackList, setFeedbackList] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -52,11 +55,18 @@ export default function PatientDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [specializationFilter, setSpecializationFilter] = useState('All');
   const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [avatarTilt, setAvatarTilt] = useState({ x: 0, y: 0 });
   const [bookingForm, setBookingForm] = useState({
     appointmentDate: '',
     timeSlot: '',
     symptoms: '',
     notes: ''
+  });
+  const [feedbackForm, setFeedbackForm] = useState({
+    appointmentId: '',
+    rating: 5,
+    comments: ''
   });
   const [formData, setFormData] = useState({
     fullName: '',
@@ -83,6 +93,7 @@ export default function PatientDashboard() {
     fetchDoctors();
     fetchMedicalRecords();
     fetchPrescriptions();
+    fetchFeedback();
   }, []);
 
   const fetchProfile = async () => {
@@ -129,6 +140,15 @@ export default function PatientDashboard() {
       setPrescriptions(res.data || []);
     } catch (e) {
       console.error('Error fetching prescriptions:', e);
+    }
+  };
+
+  const fetchFeedback = async () => {
+    try {
+      const res = await axios.get('/api/patient/feedback', { headers: authHeader });
+      setFeedbackList(res.data || []);
+    } catch (e) {
+      console.error('Error fetching feedback:', e);
     }
   };
 
@@ -195,6 +215,34 @@ export default function PatientDashboard() {
       setMessage('Error cancelling appointment');
       console.error(e);
     }
+  };
+
+  const submitFeedback = async () => {
+    if (!feedbackForm.appointmentId) {
+      setMessage('Please select a completed appointment');
+      return;
+    }
+    if (feedbackForm.rating < 1 || feedbackForm.rating > 5) {
+      setMessage('Rating must be between 1 and 5');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await axios.post('/api/patient/feedback', {
+        appointmentId: Number(feedbackForm.appointmentId),
+        rating: Number(feedbackForm.rating),
+        comments: feedbackForm.comments || ''
+      }, { headers: authHeader });
+
+      setMessage('Feedback submitted successfully');
+      setFeedbackForm({ appointmentId: '', rating: 5, comments: '' });
+      fetchFeedback();
+    } catch (e) {
+      setMessage(e.response?.data || 'Error submitting feedback');
+      console.error(e);
+    }
+    setLoading(false);
   };
 
   const convertTo24Hour = (timeStr) => {
@@ -322,32 +370,99 @@ export default function PatientDashboard() {
     });
   }, [appointments, selectedDate]);
 
+  const feedbackByAppointment = useMemo(() => {
+    const map = new Map();
+    feedbackList.forEach(item => {
+      if (item.appointmentId) {
+        map.set(item.appointmentId, item);
+      }
+    });
+    return map;
+  }, [feedbackList]);
+
+  const completedAppointments = useMemo(() => {
+    return appointments.filter(a => a.status === 'COMPLETED');
+  }, [appointments]);
+
+  const handleSectionChange = (section) => {
+    setActiveSection(section);
+    setIsSidebarOpen(false);
+  };
+
+  const handleDashboardMouseMove = (event) => {
+    const xCenter = window.innerWidth / 2;
+    const yCenter = window.innerHeight / 2;
+    const xShift = ((event.clientX - xCenter) / xCenter) * 8;
+    const yShift = ((event.clientY - yCenter) / yCenter) * 8;
+    setAvatarTilt({ x: xShift, y: yShift });
+  };
+
   return (
-    <div className="patient-shell">
-      <div className="patient-sidebar">
+    <motion.div
+      className="patient-shell"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      onMouseMove={handleDashboardMouseMove}
+      onMouseLeave={() => setAvatarTilt({ x: 0, y: 0 })}
+    >
+      <div className="patient-bg-clouds" aria-hidden="true">
+        <span className="patient-cloud cloud-a" />
+        <span className="patient-cloud cloud-b" />
+        <span className="patient-cloud cloud-c" />
+      </div>
+
+      <button
+        type="button"
+        className="patient-mobile-toggle"
+        aria-label={isSidebarOpen ? 'Close navigation' : 'Open navigation'}
+        onClick={() => setIsSidebarOpen((prev) => !prev)}
+      >
+        {isSidebarOpen ? <FiX /> : <FiMenu />}
+      </button>
+
+      <div className={`patient-sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <FaHeartbeat className="sidebar-logo" />
           <h2>Patient Portal</h2>
         </div>
         <nav className="sidebar-nav">
           {navItems.map(item => (
-            <button
+            <motion.button
               key={item.key}
               className={`nav-item ${activeSection === item.key ? 'active' : ''}`}
-              onClick={() => setActiveSection(item.key)}
+              onClick={() => handleSectionChange(item.key)}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
             >
               <item.icon className="nav-icon" />
               <span>{item.label}</span>
-            </button>
+            </motion.button>
           ))}
-          <button className="nav-item logout" onClick={handleLogout}>
+          <motion.button className="nav-item logout" onClick={handleLogout} whileHover={{ x: 4 }} whileTap={{ scale: 0.98 }}>
             <FiLogOut className="nav-icon" />
             <span>Logout</span>
-          </button>
+          </motion.button>
         </nav>
+
+        <div className="patient-cursor-avatar">
+          <div className="patient-avatar-initials">PT</div>
+          <div
+            className="patient-avatar-head"
+            style={{ transform: `translate(${avatarTilt.x}px, ${avatarTilt.y}px)` }}
+          >
+            <span className="patient-eye left"><i style={{ transform: `translate(${avatarTilt.x * 0.2}px, ${avatarTilt.y * 0.2}px)` }} /></span>
+            <span className="patient-eye right"><i style={{ transform: `translate(${avatarTilt.x * 0.2}px, ${avatarTilt.y * 0.2}px)` }} /></span>
+          </div>
+        </div>
       </div>
 
-      <div className="patient-content">
+      <motion.div
+        className="patient-content"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.1 }}
+      >
         <div className="patient-header">
           <h1>{navItems.find(n => n.key === activeSection)?.label || 'Dashboard'}</h1>
           {profile && (
@@ -374,13 +489,6 @@ export default function PatientDashboard() {
         {/* Dashboard Overview */}
         {activeSection === 'dashboard' && (
           <div className="patient-dashboard">
-            {/* Animated Icons */}
-            <div className="patient-float-icons">
-              <FaRobot className="patient-float patient-float-1" />
-              <FaHeartbeat className="patient-float patient-float-2" />
-              <FaStethoscope className="patient-float patient-float-3" />
-            </div>
-
             {/* Stats Cards */}
             <div className="stats-grid">
               <motion.div className="stat-card" whileHover={{ scale: 1.02 }}>
@@ -428,8 +536,8 @@ export default function PatientDashboard() {
                     <div key={appt.id} className="appointment-item">
                       <div className="appointment-header">
                         <div>
-                          <h4>{appt.doctor?.fullName}</h4>
-                          <p className="specialty">{appt.doctor?.specialization}</p>
+                          <h4>Dr. {appt.doctor?.fullName || appt.doctorName || 'Unknown'}</h4>
+                          <p className="specialty">{appt.doctor?.specialization || appt.doctorSpecialization || 'General'}</p>
                         </div>
                         <span className={badgeClass(appt.status)}>{appt.status}</span>
                       </div>
@@ -680,6 +788,20 @@ export default function PatientDashboard() {
                             >
                               Cancel
                             </button>
+                          ) : appt.status === 'COMPLETED' ? (
+                            feedbackByAppointment.has(appt.id) ? (
+                              <span className="action-disabled">Feedback Submitted</span>
+                            ) : (
+                              <button
+                                className="btn-primary small"
+                                onClick={() => {
+                                  setFeedbackForm(prev => ({ ...prev, appointmentId: String(appt.id) }));
+                                  setActiveSection('feedback');
+                                }}
+                              >
+                                Give Feedback
+                              </button>
+                            )
                           ) : (
                             <span className="action-disabled">-</span>
                           )}
@@ -690,6 +812,78 @@ export default function PatientDashboard() {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {activeSection === 'feedback' && (
+          <div className="feedback-section">
+            <div className="feedback-form-card">
+              <h3>Share Your Consultation Feedback</h3>
+              <div className="form-grid">
+                <div className="form-group col-2">
+                  <label>Completed Appointment</label>
+                  <select
+                    value={feedbackForm.appointmentId}
+                    onChange={(e) => setFeedbackForm({ ...feedbackForm, appointmentId: e.target.value })}
+                  >
+                    <option value="">Select appointment</option>
+                    {completedAppointments.map(appt => (
+                      <option key={appt.id} value={appt.id}>
+                        #{appt.id} - {appt.doctor?.fullName} ({new Date(appt.appointmentDate).toLocaleString()})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Rating (1-5)</label>
+                  <select
+                    value={feedbackForm.rating}
+                    onChange={(e) => setFeedbackForm({ ...feedbackForm, rating: Number(e.target.value) })}
+                  >
+                    <option value={5}>5 - Excellent</option>
+                    <option value={4}>4 - Good</option>
+                    <option value={3}>3 - Average</option>
+                    <option value={2}>2 - Poor</option>
+                    <option value={1}>1 - Very Poor</option>
+                  </select>
+                </div>
+
+                <div className="form-group col-2">
+                  <label>Comments</label>
+                  <textarea
+                    rows="4"
+                    value={feedbackForm.comments}
+                    onChange={(e) => setFeedbackForm({ ...feedbackForm, comments: e.target.value })}
+                    placeholder="Share your experience with the consultation"
+                  />
+                </div>
+              </div>
+
+              <button className="btn-primary" onClick={submitFeedback} disabled={loading}>
+                {loading ? 'Submitting...' : 'Submit Feedback'}
+              </button>
+            </div>
+
+            <div className="feedback-list-card">
+              <h3>My Submitted Feedback</h3>
+              {feedbackList.length === 0 ? (
+                <p className="no-data">No feedback submitted yet</p>
+              ) : (
+                <div className="feedback-items">
+                  {feedbackList.map(item => (
+                    <div key={item.id} className="feedback-item">
+                      <div className="feedback-item-header">
+                        <strong>{item.doctorName || 'Doctor'}</strong>
+                        <span className="feedback-rating">Rating: {item.rating}/5</span>
+                      </div>
+                      {item.comments && <p>{item.comments}</p>}
+                      <small>{new Date(item.createdAt).toLocaleString()}</small>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -936,7 +1130,7 @@ export default function PatientDashboard() {
             </div>
           </div>
         )}
-      </div>
+      </motion.div>
 
       {selectedPrescription && (
         <PrescriptionView
@@ -944,6 +1138,6 @@ export default function PatientDashboard() {
           onClose={() => setSelectedPrescription(null)}
         />
       )}
-    </div>
+    </motion.div>
   );
 }

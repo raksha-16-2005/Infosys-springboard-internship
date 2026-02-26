@@ -23,19 +23,22 @@ public class PatientService {
     private final PrescriptionRepository prescriptionRepo;
     private final UserRepository userRepository;
     private final MedicalRecordRepository medicalRecordRepo;
+    private final AppointmentFeedbackRepository feedbackRepository;
 
     public PatientService(PatientProfileRepository profileRepo,
                           AppointmentRepository apptRepo,
                           DoctorProfileRepository doctorProfileRepo,
                           PrescriptionRepository prescriptionRepo,
                           UserRepository userRepository,
-                          MedicalRecordRepository medicalRecordRepo) {
+                          MedicalRecordRepository medicalRecordRepo,
+                          AppointmentFeedbackRepository feedbackRepository) {
         this.profileRepo = profileRepo;
         this.apptRepo = apptRepo;
         this.doctorProfileRepo = doctorProfileRepo;
         this.prescriptionRepo = prescriptionRepo;
         this.userRepository = userRepository;
         this.medicalRecordRepo = medicalRecordRepo;
+        this.feedbackRepository = feedbackRepository;
     }
 
     public PatientProfileDTO getProfile(User user) {
@@ -94,7 +97,7 @@ public class PatientService {
         System.out.println("Symptoms: " + req.getSymptoms());
         System.out.println("Notes: " + req.getNotes());
         
-        PatientProfile pProfile = profileRepo.findByUser(patient).orElse(null);
+        PatientProfile pProfile = ensurePatientProfile(patient);
         if (pProfile == null) {
             System.out.println("ERROR: Patient profile not found for user: " + patient.getUsername());
             return null;
@@ -130,6 +133,29 @@ public class PatientService {
         a = apptRepo.save(a);
         System.out.println("Appointment saved successfully with ID: " + a.getId());
         return convertToAppointmentDTO(a);
+    }
+
+    private PatientProfile ensurePatientProfile(User patient) {
+        if (patient == null) {
+            return null;
+        }
+
+        Optional<PatientProfile> existing = profileRepo.findByUser(patient);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+
+        String role = patient.getRole() != null ? patient.getRole().toUpperCase() : "";
+        if (!role.endsWith("PATIENT")) {
+            return null;
+        }
+
+        PatientProfile profile = new PatientProfile();
+        profile.setUser(patient);
+        profile.setFullName(patient.getFullName() != null ? patient.getFullName() : patient.getName());
+        profile.setPhone(patient.getPhone());
+        profile.setAddress(patient.getAddress());
+        return profileRepo.save(profile);
     }
 
     public List<AppointmentDTO> myAppointments(User patient) {
@@ -248,6 +274,48 @@ public class PatientService {
                 }).collect(Collectors.toList());
     }
 
+    public FeedbackDTO submitFeedback(User patientUser, FeedbackRequest request) {
+        if (patientUser == null || request == null || request.getAppointmentId() == null || request.getRating() == null) {
+            return null;
+        }
+        if (request.getRating() < 1 || request.getRating() > 5) {
+            return null;
+        }
+
+        Appointment appointment = apptRepo.findById(request.getAppointmentId()).orElse(null);
+        if (appointment == null || appointment.getPatient() == null || appointment.getDoctor() == null) {
+            return null;
+        }
+
+        PatientProfile patientProfile = ensurePatientProfile(patientUser);
+        if (patientProfile == null || !appointment.getPatient().getId().equals(patientProfile.getId())) {
+            return null;
+        }
+
+        if (appointment.getStatus() != Appointment.Status.COMPLETED) {
+            return null;
+        }
+
+        AppointmentFeedback feedback = feedbackRepository.findByAppointment(appointment).orElse(new AppointmentFeedback());
+        feedback.setAppointment(appointment);
+        feedback.setPatientUser(patientUser);
+        feedback.setDoctorUser(appointment.getDoctor().getUser());
+        feedback.setRating(request.getRating());
+        feedback.setComments(request.getComments());
+        feedback = feedbackRepository.save(feedback);
+        return toFeedbackDTO(feedback);
+    }
+
+    public List<FeedbackDTO> getMyFeedback(User patientUser) {
+        if (patientUser == null) {
+            return List.of();
+        }
+        return feedbackRepository.findByPatientUserOrderByCreatedAtDesc(patientUser)
+                .stream()
+                .map(this::toFeedbackDTO)
+                .collect(Collectors.toList());
+    }
+
     public String updateProfileImage(User patient, MultipartFile file) {
         if (file.isEmpty()) return null;
         
@@ -280,5 +348,25 @@ public class PatientService {
 
     public String getProfileImagePath(User patient) {
         return patient.getProfileImagePath();
+    }
+
+    private FeedbackDTO toFeedbackDTO(AppointmentFeedback feedback) {
+        FeedbackDTO dto = new FeedbackDTO();
+        dto.setId(feedback.getId());
+        dto.setAppointmentId(feedback.getAppointment() != null ? feedback.getAppointment().getId() : null);
+        dto.setRating(feedback.getRating());
+        dto.setComments(feedback.getComments());
+        dto.setCreatedAt(feedback.getCreatedAt());
+        if (feedback.getPatientUser() != null) {
+            dto.setPatientName(feedback.getPatientUser().getFullName() != null
+                    ? feedback.getPatientUser().getFullName()
+                    : feedback.getPatientUser().getUsername());
+        }
+        if (feedback.getDoctorUser() != null) {
+            dto.setDoctorName(feedback.getDoctorUser().getFullName() != null
+                    ? feedback.getDoctorUser().getFullName()
+                    : feedback.getDoctorUser().getUsername());
+        }
+        return dto;
     }
 }

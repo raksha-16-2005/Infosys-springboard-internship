@@ -206,20 +206,6 @@
   animation: float-1 4s ease-in-out infinite;
 }
 
-.patient-float-2 {
-  top: 250px;
-  right: 150px;
-  color: #ff6b9d;
-  animation: float-2 3.5s ease-in-out infinite;
-}
-
-.patient-float-3 {
-  top: 400px;
-  right: 100px;
-  color: #764ba2;
-  animation: float-3 4.5s ease-in-out infinite;
-}
-
 @keyframes float-1 {
   0%, 100% { transform: translateY(0) rotate(0deg); }
   50% { transform: translateY(-30px) rotate(10deg); }
@@ -233,6 +219,63 @@
 @keyframes float-3 {
   0%, 100% { transform: translateY(0) rotate(0deg); }
   50% { transform: translateY(-35px) rotate(15deg); }
+}
+
+.patient-cursor-avatar {
+  margin: 10px auto 0;
+  width: calc(100% - 24px);
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: grid;
+  place-items: center;
+  gap: 10px;
+}
+
+.patient-avatar-import {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.patient-avatar-head {
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #f8fafc, #dbeafe);
+  border: 2px solid rgba(56, 189, 248, 0.48);
+  position: relative;
+  transition: transform 0.14s ease;
+}
+
+.patient-eye {
+  position: absolute;
+  top: 28px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #0f172a;
+  display: grid;
+  place-items: center;
+}
+
+.patient-eye.left {
+  left: 14px;
+}
+
+.patient-eye.right {
+  right: 14px;
+}
+
+.patient-eye i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #38bdf8;
+  transition: transform 0.14s ease;
 }
 
 /* Stats Grid */
@@ -584,6 +627,229 @@
   flex-direction: column;
   gap: 8px;
   margin: 15px 0;
+
+/* ===== White UI Refresh: Patient + Feedback ===== */
+
+.patient-shell {
+  background: #f8fafc;
+}
+
+.patient-sidebar {
+  background: #ffffff;
+  color: #0f172a;
+  border-right: 1px solid #e2e8f0;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.sidebar-header {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.sidebar-logo {
+  color: #0f172a;
+  animation: none;
+}
+
+.sidebar-header h2 {
+  color: #0f172a;
+}
+
+.nav-item {
+  color: #475569;
+}
+
+.nav-item:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.nav-item.active {
+  background: #eef2ff;
+  color: #0f172a;
+  border-left: 4px solid #0f172a;
+}
+
+.nav-item.logout {
+  color: #b91c1c;
+}
+
+.patient-content {
+  background: transparent;
+}
+
+.patient-header {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.patient-cursor-avatar {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.patient-avatar-import {
+  display: none;
+}
+
+.patient-avatar-initials {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: #ffffff;
+  background: #0f172a;
+}
+
+.patient-avatar-head {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+}
+
+.patient-eye {
+  background: #0f172a;
+}
+
+.patient-eye i {
+  background: #94a3b8;
+}
+
+.feedback-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.feedback-form-card,
+.feedback-list-card {
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.feedback-form-card h3,
+.feedback-list-card h3 {
+  color: #0f172a;
+  margin-bottom: 12px;
+}
+
+.feedback-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.feedback-item-header {
+  margin-bottom: 8px;
+}
+
+.feedback-rating {
+  color: #0f172a;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+@media (max-width: 980px) {
+  .feedback-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== Unified Buttons: Patient ===== */
+
+.patient-shell .btn-primary,
+.patient-shell .btn-secondary,
+.patient-shell .btn-danger,
+.patient-shell .back-btn,
+.patient-shell .image-upload-controls .btn-primary,
+.patient-shell .image-upload-controls .btn-secondary,
+.patient-shell .form-actions .btn-primary,
+.patient-shell .form-actions .btn-secondary {
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.patient-shell .btn-primary,
+.patient-shell .image-upload-controls .btn-primary,
+.patient-shell .form-actions .btn-primary {
+  background: #0f172a;
+  color: #ffffff;
+  border: 1px solid #0f172a;
+}
+
+.patient-shell .btn-secondary,
+.patient-shell .back-btn,
+.patient-shell .image-upload-controls .btn-secondary,
+.patient-shell .form-actions .btn-secondary {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.patient-shell .btn-danger {
+  background: #dc2626;
+  color: #ffffff;
+  border: 1px solid #dc2626;
+}
+
+.patient-shell .btn-primary:hover:not(:disabled),
+.patient-shell .image-upload-controls .btn-primary:hover,
+.patient-shell .form-actions .btn-primary:hover {
+  background: #1e293b;
+  border-color: #1e293b;
+  box-shadow: none;
+  transform: none;
+}
+
+.patient-shell .btn-secondary:hover,
+.patient-shell .back-btn:hover,
+.patient-shell .image-upload-controls .btn-secondary:hover,
+.patient-shell .form-actions .btn-secondary:hover {
+  background: #f8fafc;
+  color: #334155;
+  border-color: #94a3b8;
+}
+
+/* ===== White Form Controls: Patient ===== */
+
+.patient-shell input:not([type='checkbox']):not([type='radio']),
+.patient-shell select,
+.patient-shell textarea {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.patient-shell input[type='file'] {
+  padding: 8px;
+}
+
+.patient-shell input:not([type='checkbox']):not([type='radio']):focus,
+.patient-shell select:focus,
+.patient-shell textarea:focus {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.24);
+}
+
+.patient-shell .dashboard-section,
+.patient-shell .appointments-section,
+.patient-shell .feedback-form-card,
+.patient-shell .feedback-list-card,
+.patient-shell .profile-form,
+.patient-shell .booking-form,
+.patient-shell .calendar-container,
+.patient-shell .selected-date-appointments,
+.patient-shell .medical-records-section,
+.patient-shell .records-list,
+.patient-shell .prescriptions-list,
+.patient-shell .doctor-card {
+  padding: 24px;
+}
   font-size: 14px;
   color: #4a5568;
 }
@@ -750,6 +1016,44 @@
 .btn-secondary:hover {
   background: #667eea;
   color: white;
+}
+
+.feedback-section {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.feedback-form-card,
+.feedback-list-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.feedback-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.feedback-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.feedback-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.feedback-rating {
+  color: #667eea;
+  font-weight: 600;
 }
 
 /* Appointments Table */
@@ -1263,4 +1567,312 @@
     width: 100%;
     justify-content: center;
   }
+}
+
+/* ===== Premium Patient UI Overrides ===== */
+
+.patient-shell {
+  position: relative;
+  background: linear-gradient(145deg, #eaf5ff 0%, #f3f8ff 45%, #f8fbff 100%);
+  font-family: "Inter", sans-serif;
+  overflow: hidden;
+}
+
+.patient-bg-clouds {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.patient-cloud {
+  position: absolute;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.82), rgba(210, 234, 255, 0.2));
+  filter: blur(1px);
+  animation: patientCloudDrift linear infinite;
+}
+
+.patient-cloud.cloud-a {
+  width: 290px;
+  height: 120px;
+  top: 7%;
+  left: -280px;
+  animation-duration: 30s;
+}
+
+.patient-cloud.cloud-b {
+  width: 350px;
+  height: 140px;
+  top: 35%;
+  left: -340px;
+  animation-duration: 43s;
+}
+
+.patient-cloud.cloud-c {
+  width: 310px;
+  height: 120px;
+  top: 72%;
+  left: -300px;
+  animation-duration: 37s;
+}
+
+@keyframes patientCloudDrift {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(145vw); }
+}
+
+.patient-mobile-toggle {
+  display: none;
+}
+
+.patient-sidebar {
+  background: rgba(255, 255, 255, 0.52);
+  border-right: 1px solid rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 22px 45px rgba(15, 23, 42, 0.14);
+}
+
+.sidebar-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.55);
+}
+
+.sidebar-logo {
+  color: #0284c7;
+}
+
+.sidebar-header h2 {
+  color: #0f172a;
+}
+
+.nav-item {
+  width: calc(100% - 20px);
+  margin: 0 auto 8px;
+  border-radius: 14px;
+  color: #334155;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+}
+
+.nav-item:hover {
+  background: rgba(14, 165, 233, 0.14);
+  color: #0f172a;
+  box-shadow: 0 12px 24px rgba(14, 165, 233, 0.12);
+}
+
+.nav-item.active {
+  border-left: none;
+  background: linear-gradient(130deg, #0284c7, #0ea5e9);
+  color: #fff;
+}
+
+.nav-item.logout {
+  color: #b91c1c;
+}
+
+.nav-item.logout:hover {
+  background: rgba(248, 113, 113, 0.16);
+}
+
+.patient-content {
+  position: relative;
+  z-index: 1;
+  margin-left: 260px;
+}
+
+.patient-header,
+.dashboard-section,
+.book-appointment-section,
+.appointments-section,
+.feedback-form-card,
+.feedback-list-card,
+.calendar-container,
+.selected-date-appointments,
+.profile-section,
+.records-list,
+.prescriptions-list,
+.booking-form,
+.doctors-grid .doctor-card {
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.1);
+}
+
+.patient-header {
+  border-bottom: none;
+  border-radius: 20px;
+  padding: 18px 20px;
+}
+
+.stats-grid .stat-card,
+.appointment-item,
+.feedback-item,
+.record-item,
+.prescription-item,
+.appointment-detail,
+.doctors-grid .doctor-card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.stats-grid .stat-card:hover,
+.appointment-item:hover,
+.feedback-item:hover,
+.record-item:hover,
+.prescription-item:hover,
+.appointment-detail:hover,
+.doctors-grid .doctor-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 36px rgba(2, 132, 199, 0.18);
+  border-color: rgba(56, 189, 248, 0.5);
+}
+
+.btn-primary,
+.action-btn.primary {
+  background: linear-gradient(120deg, #0284c7 0%, #0ea5e9 45%, #6366f1 100%);
+  border: none;
+  box-shadow: 0 12px 24px rgba(14, 165, 233, 0.24);
+}
+
+.btn-secondary,
+.action-btn.secondary {
+  background: rgba(255, 255, 255, 0.74);
+  color: #0f172a;
+  border: 1px solid rgba(203, 213, 225, 0.85);
+}
+
+.rescheduled,
+.rescheduled-tag {
+  border-radius: 12px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: linear-gradient(115deg, rgba(255, 251, 235, 0.95), rgba(255, 237, 213, 0.8));
+  color: #9a3412;
+  box-shadow: 0 12px 22px rgba(251, 146, 60, 0.14);
+  animation: patientReschedulePulse 2.4s ease-in-out infinite;
+}
+
+@keyframes patientReschedulePulse {
+  0%,
+  100% { transform: translateY(0); }
+  50% { transform: translateY(-1px); }
+}
+
+.profile-section,
+.profile-image-section,
+.profile-form {
+  border-radius: 18px;
+}
+
+.profile-section {
+  padding: 20px;
+}
+
+.profile-form .form-group label {
+  color: #334155;
+  font-weight: 600;
+}
+
+.profile-form .btn-primary {
+  background: linear-gradient(120deg, #0284c7 0%, #0ea5e9 45%, #6366f1 100%);
+  box-shadow: 0 12px 24px rgba(14, 165, 233, 0.24);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea,
+.search-box input,
+.filter-select {
+  border-radius: 12px;
+  border: 1px solid #dbe7f3;
+  transition: border-color 0.2s ease, box-shadow 0.22s ease, transform 0.22s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus,
+.search-box input:focus,
+.filter-select:focus {
+  border-color: rgba(14, 165, 233, 0.85);
+  box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.3);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+@media (max-width: 920px) {
+  .patient-mobile-toggle {
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    z-index: 300;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.85);
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
+    cursor: pointer;
+  }
+
+  .patient-sidebar {
+    width: min(285px, 84vw);
+    transform: translateX(-100%);
+    transition: transform 0.28s ease;
+  }
+
+  .patient-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .patient-content {
+    margin-left: 0;
+    padding: 70px 16px 20px;
+  }
+}
+
+/* ===== Final White Form Normalization ===== */
+
+.patient-shell .form-group input,
+.patient-shell .form-group select,
+.patient-shell .form-group textarea,
+.patient-shell .search-box input,
+.patient-shell .filter-select {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: none;
+  transform: none;
+}
+
+.patient-shell .form-group input:focus,
+.patient-shell .form-group select:focus,
+.patient-shell .form-group textarea:focus,
+.patient-shell .search-box input:focus,
+.patient-shell .filter-select:focus {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.24);
+  transform: none;
+}
+
+.patient-shell .profile-form,
+.patient-shell .profile-image-section,
+.patient-shell .feedback-form-card,
+.patient-shell .feedback-list-card,
+.patient-shell .selected-date-appointments,
+.patient-shell .calendar-container,
+.patient-shell .appointment-detail,
+.patient-shell .record-item,
+.patient-shell .prescription-item,
+.patient-shell .doctor-card {
+  padding: 22px;
+}
+
+.patient-shell .profile-form .btn-primary,
+.patient-shell .btn-primary,
+.patient-shell .action-btn.primary {
+  background: #0f172a;
+  border: 1px solid #0f172a;
+  box-shadow: none;
 }

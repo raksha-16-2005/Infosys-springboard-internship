@@ -125,6 +125,26 @@ public class PatientController {
         return ResponseEntity.ok(patientService.getMedicalRecords(user));
     }
 
+    @PostMapping("/feedback")
+    @PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<?> submitFeedback(@RequestBody FeedbackRequest request) {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        FeedbackDTO feedback = patientService.submitFeedback(user, request);
+        if (feedback == null) {
+            return ResponseEntity.badRequest().body("Failed to submit feedback. Ensure appointment is completed and belongs to you.");
+        }
+        return ResponseEntity.ok(feedback);
+    }
+
+    @GetMapping("/feedback")
+    @PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<?> getMyFeedback() {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        return ResponseEntity.ok(patientService.getMyFeedback(user));
+    }
+
     @PostMapping("/profile/image")
     @PreAuthorize("hasRole('PATIENT')")
     public ResponseEntity<?> uploadProfileImage(@RequestParam("file") MultipartFile file) {

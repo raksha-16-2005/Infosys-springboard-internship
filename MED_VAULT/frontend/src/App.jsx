@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion';
 import AuthModal from './components/AuthModal';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
@@ -7,10 +8,6 @@ import PatientDashboardNew from './components/PatientDashboardNew';
 import DoctorDashboardNew from './components/DoctorDashboardNew';
 import AdminDashboard from './components/AdminDashboard';
 import './styles/global.css';
-import './styles/dashboard.css';
-import './styles/calendar.css';
-import './styles/prescription.css';
-import './styles/admin.css';
 
 function App() {
     const [isAuthOpen, setAuthOpen] = useState(false);
@@ -48,24 +45,42 @@ function App() {
         navigate('/');
     };
 
-    const HomePage = () => (
-        <>
-            {/* Hero Section */}
-            <div className="container hero">
-                <div className="hero-content">
-                    <h1>Secure Healthcare Management for Everyone</h1>
+    const dashboardPath =
+        user?.role && user.role.includes('ADMIN')
+            ? '/admin'
+            : user?.role && user.role.includes('PATIENT')
+                ? '/patient'
+                : '/doctor';
+
+    const HomePage = () => {
+        return (
+            <motion.div
+                className="app-hero-shell"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4 }}
+            >
+            <div className="app-floating-objects" aria-hidden="true">
+                <span className="float-orb orb-1" />
+                <span className="float-orb orb-2" />
+                <span className="float-orb orb-3" />
+                <span className="float-orb orb-4" />
+            </div>
+
+            <div className="container app-hero">
+                <motion.div className="hero-content" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
+                    <h1>Secure Healthcare Management Platform</h1>
                     <p>
-                        MedVault provides a unified platform for patients and administrators to manage health records securely.
-                        Experience the future of medical data with our role-based, encrypted, and easy-to-use system.
+                        MedVault delivers appointment scheduling, patient records, and role-based access in a clean hospital-ready workflow.
                     </p>
 
-                    <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div className="hero-cta-row">
                         {!user && (
-                            <button className="btn btn-primary" style={{ fontSize: '1.2rem', padding: '1rem 2rem' }} onClick={() => setAuthOpen(true)}>
+                            <button className="btn btn-primary hero-btn" onClick={() => setAuthOpen(true)}>
                                 Get Started Now
                             </button>
                         )}
-                        <button className="btn btn-outline" style={{ fontSize: '1.2rem', padding: '1rem 2rem' }}>
+                        <button className="btn btn-outline hero-btn">
                             Learn More
                         </button>
                     </div>
@@ -84,47 +99,174 @@ function App() {
                             <p>Certified</p>
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
-                {/* Abstract Visual / Illustration Placeholder */}
-                <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-                    <div className="glass-panel" style={{ width: '400px', height: '500px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(45deg, rgba(37,99,235,0.1), rgba(8,145,178,0.1))', borderRadius: '16px' }}></div>
-                        <div style={{ textAlign: 'center', padding: '2rem' }}>
-                            <div style={{ fontSize: '5rem', marginBottom: '1rem' }}>🛡️</div>
-                            <h3>Bank-Grade Security</h3>
-                            <p style={{ color: '#64748b' }}>Your data is encrypted and protected with industry standard security protocols.</p>
+                <motion.div className="hero-visual-wrap" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
+                    <div className="glass-panel hero-visual-card">
+                        <div className="hero-visual-overlay"></div>
+                        <div className="hero-visual-content">
+                            <h3>Operational Snapshot</h3>
+                            <div className="hero-kpi-grid">
+                                <div className="hero-kpi-item">
+                                    <strong>99.9%</strong>
+                                    <span>Platform uptime</span>
+                                </div>
+                                <div className="hero-kpi-item">
+                                    <strong>24/7</strong>
+                                    <span>Scheduling support</span>
+                                </div>
+                                <div className="hero-kpi-item">
+                                    <strong>10k+</strong>
+                                    <span>Patient records</span>
+                                </div>
+                                <div className="hero-kpi-item">
+                                    <strong>HIPAA</strong>
+                                    <span>Security alignment</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </motion.div>
             </div>
-        </>
-    );
+
+            <section className="container hospital-dna-section">
+                <motion.article
+                    className="dna-about-card"
+                    initial={{ opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.25 }}
+                    transition={{ duration: 0.45 }}
+                >
+                    <h2>Hospital DNA</h2>
+                    <p>
+                        MedVault is designed for modern hospital flow: triage visibility, doctor-patient continuity,
+                        and secure medical intelligence in one operational surface.
+                    </p>
+                    <ul>
+                        <li>Care-path orchestration with real-time updates</li>
+                        <li>Clinical accuracy with role-based controls</li>
+                        <li>Operational reliability with audit-ready records</li>
+                    </ul>
+                </motion.article>
+
+                <motion.article
+                    className="dna-animation-card"
+                    initial={{ opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.25 }}
+                    transition={{ duration: 0.48, delay: 0.06 }}
+                >
+                    <div className="dna-orbit-shell">
+                        <span className="dna-ring dna-ring-1" />
+                        <span className="dna-ring dna-ring-2" />
+                        <span className="dna-ring dna-ring-3" />
+                        <span className="dna-core">+</span>
+                    </div>
+                    <p>Live telemetry • Smart scheduling • Precision care signals</p>
+                </motion.article>
+            </section>
+
+            <section className="container app-feature-timeline">
+                <motion.h3
+                    className="timeline-title"
+                    initial={{ opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.3 }}
+                    transition={{ duration: 0.4 }}
+                >
+                    MedVault Feature Journey
+                </motion.h3>
+
+                <div className="timeline-line" aria-hidden="true" />
+                <motion.div
+                    className="timeline-progress"
+                    initial={{ scaleY: 0 }}
+                    whileInView={{ scaleY: 1 }}
+                    viewport={{ once: false, amount: 0.25 }}
+                    transition={{ duration: 0.9, ease: 'easeOut' }}
+                />
+
+                {[
+                    { step: '01', title: 'Patient Onboarding', text: 'Secure sign-up and profile setup with structured medical details.' },
+                    { step: '02', title: 'Smart Scheduling', text: 'Patients book slots and doctors manage queue updates in real time.' },
+                    { step: '03', title: 'Care Documentation', text: 'Doctors add diagnosis notes, records, and prescriptions per visit.' },
+                    { step: '04', title: 'Feedback Intelligence', text: 'Patient reviews are collected to improve consultation quality.' }
+                ].map((item, index) => (
+                    <motion.article
+                        key={item.step}
+                        className={`timeline-item ${index % 2 === 0 ? 'timeline-left' : 'timeline-right'}`}
+                        initial={{ opacity: 0, x: index % 2 === 0 ? -24 : 24, filter: 'blur(8px)' }}
+                        whileInView={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+                        viewport={{ once: false, amount: 0.35 }}
+                        transition={{ duration: 0.42, delay: index * 0.07 }}
+                    >
+                        <span className="timeline-dot" aria-hidden="true" />
+                        <div className="timeline-step">{item.step}</div>
+                        <div className="timeline-content">
+                            <h4>{item.title}</h4>
+                            <p>{item.text}</p>
+                        </div>
+                    </motion.article>
+                ))}
+            </section>
+
+            <section className="container app-feature-section">
+                {[
+                    { title: 'Smart Booking Engine', text: 'Doctor availability, patient urgency, and slot confidence in one flow.' },
+                    { title: 'Reschedule Intelligence', text: 'Fast appointment shifts with status clarity for doctor and patient.' },
+                    { title: 'Medical Timeline', text: 'Prescriptions, notes, and records connected to each appointment history.' },
+                    { title: 'Role-secure Access', text: 'Admin, doctor, and patient views with clean and isolated workflows.' }
+                ].map((feature, index) => (
+                    <motion.div
+                        key={feature.title}
+                        className="app-feature-card"
+                        initial={{ opacity: 0, y: 16 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, amount: 0.2 }}
+                        transition={{ duration: 0.4, delay: index * 0.06 }}
+                        whileHover={{ y: -6 }}
+                    >
+                        <h3>{feature.title}</h3>
+                        <p>{feature.text}</p>
+                    </motion.div>
+                ))}
+            </section>
+
+            <section className="container app-feedback-preview">
+                <motion.article
+                    className="feedback-preview-card"
+                    initial={{ opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.25 }}
+                    transition={{ duration: 0.4 }}
+                >
+                    <div>
+                        <h3>Patient Feedback Review</h3>
+                        <p>Recent consultation feedback from patient experiences.</p>
+                    </div>
+                    <div className="feedback-score">4.8 / 5</div>
+                </motion.article>
+            </section>
+
+            <div className="app-home-end-space" aria-hidden="true" />
+        </motion.div>
+        );
+    };
 
     return (
-        <div>
-            {/* Navbar */}
-            <nav className="navbar glass-panel" style={{ borderRadius: '0 0 16px 16px', top: 0, margin: '0 1rem', width: 'calc(100% - 2rem)', position: 'fixed' }}>
-                <Link to="/" className="logo" style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <span style={{ fontSize: '1.8rem' }}>🏥</span> MedVault
+        <div className="app-shell">
+            <nav className="navbar glass-panel app-navbar">
+                <Link to="/" className="logo app-logo">
+                    <span className="logo-mark">MV</span> MedVault
                 </Link>
-                <div style={{ display: 'flex', gap: '1rem' }}>
+                <div className="app-nav-actions">
                     {user ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <span style={{ fontWeight: 500 }}>Hi, {user.displayName || user.username} ({user.role})</span>
+                        <div className="app-user-actions">
+                            <span className="app-user-chip">Hi, {user.displayName || user.username} ({user.role})</span>
                             <button className="btn btn-outline" onClick={handleLogout}>Logout</button>
-                            <a
-                                href={
-                                    user.role && user.role.includes('ADMIN')
-                                        ? '/admin'
-                                        : user.role && user.role.includes('PATIENT')
-                                            ? '/patient'
-                                            : '/doctor'
-                                }
-                                className="btn btn-primary"
-                            >
+                            <Link to={dashboardPath} className="btn btn-primary">
                                 Dashboard
-                            </a>
+                            </Link>
                         </div>
                     ) : (
                         <>
@@ -136,7 +278,7 @@ function App() {
                 </div>
             </nav>
 
-            <div style={{ marginTop: 120 }}>
+            <div className="app-page-content">
                 <Routes>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/forgot-password" element={<ForgotPassword />} />

@@ -84,7 +84,7 @@
 .doctor-float-icons {
   display: flex;
   justify-content: center;
-  gap: 12px;
+  gap: 8px;
   font-size: 1.5rem;
   margin-bottom: 10px;
 }
@@ -214,24 +214,31 @@
 }
 
 .doctor-actions button {
-  border: none;
-  padding: 6px 12px;
-  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  padding: 8px 14px;
+  border-radius: 10px;
   cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .doctor-actions .primary {
-  background: #0ea5e9;
+  background: #0f172a;
   color: #fff;
+  border-color: #0f172a;
 }
 
 .doctor-actions .danger {
-  background: #ef4444;
+  background: #dc2626;
   color: #fff;
+  border-color: #dc2626;
 }
 
 .doctor-actions .ghost {
-  background: rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  color: #334155;
 }
 
 .doctor-modal {
@@ -396,3 +403,395 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== Premium Doctor Enhancements ===== */
+
+.doctor-profile-layout {
+  align-items: start;
+}
+
+.doctor-profile-media {
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.doctor-profile-form-premium {
+  border-radius: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.doctor-profile-form-premium label {
+  color: #334155;
+}
+
+.doctor-profile-form-premium input,
+.doctor-profile-form-premium textarea,
+.doctor-profile-form-premium select,
+.doctor-reschedule-card input,
+.doctor-reschedule-card textarea,
+.doctor-reschedule-card select {
+  border-radius: 12px;
+  border: 1px solid #dbe7f3;
+  transition: border-color 0.2s ease, box-shadow 0.24s ease, transform 0.24s ease;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.doctor-profile-form-premium input:focus,
+.doctor-profile-form-premium textarea:focus,
+.doctor-profile-form-premium select:focus,
+.doctor-reschedule-card input:focus,
+.doctor-reschedule-card textarea:focus,
+.doctor-reschedule-card select:focus {
+  border-color: rgba(14, 165, 233, 0.85);
+  box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.33);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.doctor-profile-form-premium button,
+.doctor-reschedule-card .primary {
+  background: linear-gradient(130deg, #0284c7, #0ea5e9 42%, #6366f1);
+  box-shadow: 0 14px 24px rgba(14, 165, 233, 0.24);
+}
+
+.doctor-reschedule-card {
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 24px 45px rgba(15, 23, 42, 0.2);
+}
+
+.doctor-reschedule-card h3 {
+  margin-bottom: 0;
+  color: #0f172a;
+}
+
+.doctor-modal-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.doctor-modal-cal-icon {
+  color: #0284c7;
+  animation: doctorCalBounce 2s ease-in-out infinite;
+}
+
+@keyframes doctorCalBounce {
+  0%,
+  100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+.doctor-reschedule-card label {
+  display: grid;
+  gap: 6px;
+  color: #334155;
+  font-weight: 600;
+}
+
+.doctor-reschedule-card textarea {
+  min-height: 44px;
+  color: #0f172a;
+}
+
+.doctor-reschedule-card textarea::placeholder {
+  color: #64748b;
+}
+
+.doctor-reschedule-card .doctor-actions {
+  margin-top: 4px;
+}
+
+.doctor-reschedule-card .muted {
+  color: #475569;
+  font-weight: 600;
+}
+
+.doctor-calendar-card .react-calendar,
+.doctor-reschedule-calendar-wrap .react-calendar {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+  padding: 10px;
+  font-family: 'Karla', 'Inter', sans-serif;
+}
+
+.doctor-calendar-card .react-calendar__navigation button,
+.doctor-reschedule-calendar-wrap .react-calendar__navigation button {
+  border-radius: 10px;
+  min-width: 34px;
+  background: transparent;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.doctor-calendar-card .react-calendar__navigation button:enabled:hover,
+.doctor-reschedule-calendar-wrap .react-calendar__navigation button:enabled:hover {
+  background: rgba(14, 165, 233, 0.12);
+}
+
+.doctor-calendar-card .react-calendar__tile,
+.doctor-reschedule-calendar-wrap .react-calendar__tile {
+  border-radius: 10px;
+  transition: transform 0.16s ease, background-color 0.2s ease;
+}
+
+.doctor-calendar-card .react-calendar__tile:enabled:hover,
+.doctor-reschedule-calendar-wrap .react-calendar__tile:enabled:hover {
+  background: rgba(14, 165, 233, 0.16);
+  transform: translateY(-1px);
+}
+
+.doctor-calendar-card .react-calendar__tile--active,
+.doctor-reschedule-calendar-wrap .react-calendar__tile--active {
+  background: linear-gradient(130deg, #0284c7, #6366f1) !important;
+  color: #fff;
+}
+
+.doctor-reschedule-calendar-wrap {
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(248, 250, 252, 0.9);
+  padding: 8px;
+  animation: doctorCalendarFade 0.28s ease;
+}
+
+@keyframes doctorCalendarFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.doctor-reschedule-card {
+  gap: 14px;
+}
+
+.doctor-reschedule-card label {
+  font-size: 1.08rem;
+}
+
+.doctor-reschedule-card select,
+.doctor-reschedule-card textarea {
+  padding: 11px 12px;
+  font-size: 1rem;
+}
+
+.doctor-reschedule-card .doctor-actions {
+  margin-top: 8px;
+}
+
+.doctor-reschedule-card .doctor-actions button {
+  padding: 10px 16px;
+  border-radius: 11px;
+  font-size: 1.02rem;
+}
+
+.doctor-cursor-avatar {
+  margin-top: 4px;
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  display: grid;
+  place-items: center;
+  gap: 10px;
+}
+
+.doctor-avatar-import {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.doctor-avatar-head {
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #f8fafc, #dbeafe);
+  border: 2px solid rgba(56, 189, 248, 0.48);
+  position: relative;
+  transition: transform 0.14s ease;
+}
+
+.doctor-eye {
+  position: absolute;
+  top: 28px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #0f172a;
+  display: grid;
+  place-items: center;
+}
+
+.doctor-eye.left {
+  left: 14px;
+}
+
+.doctor-eye.right {
+  right: 14px;
+}
+
+.doctor-eye i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #38bdf8;
+  transition: transform 0.14s ease;
+}
+
+.doctor-reschedule-card .danger {
+  background: linear-gradient(130deg, #ef4444, #f97316);
+}
+
+/* ===== White UI Final: Sidebar + Form Controls + Box Padding ===== */
+
+.doctor-shell {
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.doctor-main {
+  background: #f8fafc;
+}
+
+.doctor-sidebar {
+  background: #ffffff;
+  color: #0f172a;
+  border-right: 1px solid #e2e8f0;
+  box-shadow: 8px 0 24px rgba(15, 23, 42, 0.06);
+}
+
+.doctor-brand p,
+.doctor-sidebar-footer {
+  color: #64748b;
+}
+
+.doctor-nav button {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.doctor-nav button:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.doctor-nav button.active {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+}
+
+.doctor-nav button.logout {
+  color: #b91c1c;
+}
+
+.doctor-float-icons,
+.doctor-cursor-avatar {
+  display: none;
+}
+
+.doctor-card,
+.doctor-modal-card,
+.doctor-overlay-card,
+.doctor-popup,
+.doctor-calendar-card,
+.doctor-profile-chip,
+.doctor-form-card,
+.doctor-list-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.doctor-card,
+.doctor-modal-card,
+.doctor-overlay-card,
+.doctor-form-card,
+.doctor-list-card {
+  padding: 24px;
+}
+
+.doctor-note-list > div {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.doctor-shell input:not([type='checkbox']):not([type='radio']),
+.doctor-shell select,
+.doctor-shell textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.96rem;
+  outline: none;
+}
+
+.doctor-shell input[type='file'] {
+  padding: 8px;
+}
+
+.doctor-shell input:not([type='checkbox']):not([type='radio']):focus,
+.doctor-shell select:focus,
+.doctor-shell textarea:focus {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.24);
+}
+
+.doctor-shell .doctor-card button,
+.doctor-shell .doctor-modal-card button,
+.doctor-shell .doctor-overlay-card button,
+.doctor-shell .doctor-profile-form button,
+.doctor-shell .doctor-note-list button,
+.doctor-shell button.primary,
+.doctor-shell button.ghost,
+.doctor-shell button.danger {
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-weight: 600;
+}
+
+.doctor-shell button.primary {
+  background: #0f172a;
+  color: #ffffff;
+  border: 1px solid #0f172a;
+}
+
+.doctor-shell button.ghost {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.doctor-shell button.danger {
+  background: #dc2626;
+  color: #ffffff;
+  border: 1px solid #dc2626;
+}
+

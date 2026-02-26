@@ -25,17 +25,20 @@ public class DoctorService {
     private final PrescriptionRepository prescriptionRepo;
     private final UserRepository userRepository;
     private final MedicalRecordRepository medicalRecordRepository;
+    private final AppointmentFeedbackRepository feedbackRepository;
 
     public DoctorService(DoctorProfileRepository doctorProfileRepo,
                          AppointmentRepository apptRepo,
                          PrescriptionRepository prescriptionRepo,
                          UserRepository userRepository,
-                         MedicalRecordRepository medicalRecordRepository) {
+                         MedicalRecordRepository medicalRecordRepository,
+                         AppointmentFeedbackRepository feedbackRepository) {
         this.doctorProfileRepo = doctorProfileRepo;
         this.apptRepo = apptRepo;
         this.prescriptionRepo = prescriptionRepo;
         this.userRepository = userRepository;
         this.medicalRecordRepository = medicalRecordRepository;
+        this.feedbackRepository = feedbackRepository;
     }
 
     public DoctorProfileDTO getProfile(User user) {
@@ -260,6 +263,16 @@ public class DoctorService {
         return convertToPrescriptionDTO(p);
     }
 
+    public List<FeedbackDTO> getMyFeedback(User doctor) {
+        if (doctor == null) {
+            return List.of();
+        }
+        return feedbackRepository.findByDoctorUserOrderByCreatedAtDesc(doctor)
+                .stream()
+                .map(this::toFeedbackDTO)
+                .collect(Collectors.toList());
+    }
+
     private AppointmentDTO convertToAppointmentDTO(Appointment a) {
         AppointmentDTO dto = new AppointmentDTO();
         dto.setId(a.getId());
@@ -330,6 +343,26 @@ public class DoctorService {
         dto.setFilePath(record.getFilePath());
         dto.setDoctorName(record.getDoctorName());
         dto.setUploadedAt(record.getUploadedAt());
+        return dto;
+    }
+
+    private FeedbackDTO toFeedbackDTO(AppointmentFeedback feedback) {
+        FeedbackDTO dto = new FeedbackDTO();
+        dto.setId(feedback.getId());
+        dto.setAppointmentId(feedback.getAppointment() != null ? feedback.getAppointment().getId() : null);
+        dto.setRating(feedback.getRating());
+        dto.setComments(feedback.getComments());
+        dto.setCreatedAt(feedback.getCreatedAt());
+        if (feedback.getPatientUser() != null) {
+            dto.setPatientName(feedback.getPatientUser().getFullName() != null
+                    ? feedback.getPatientUser().getFullName()
+                    : feedback.getPatientUser().getUsername());
+        }
+        if (feedback.getDoctorUser() != null) {
+            dto.setDoctorName(feedback.getDoctorUser().getFullName() != null
+                    ? feedback.getDoctorUser().getFullName()
+                    : feedback.getDoctorUser().getUsername());
+        }
         return dto;
     }
 

@@ -18,6 +18,7 @@ import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -163,6 +164,15 @@ public class DoctorController {
         User user = getAuthenticatedUser();
         if (user == null) return ResponseEntity.status(401).body("Unauthorized");
         return ResponseEntity.ok(doctorService.getPatients(user));
+    }
+
+    @GetMapping("/feedback")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public ResponseEntity<?> getFeedback() {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        List<FeedbackDTO> feedback = doctorService.getMyFeedback(user);
+        return ResponseEntity.ok(feedback);
     }
 
     @GetMapping("/patients/{patientUserId}/records")

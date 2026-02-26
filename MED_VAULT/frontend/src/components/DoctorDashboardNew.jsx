@@ -21,6 +21,7 @@ import '../styles/doctor.css';
 const navItems = [
   { key: 'dashboard', label: 'Dashboard', icon: FiHome },
   { key: 'appointments', label: 'Appointments', icon: FiFileText },
+  { key: 'feedback', label: 'Feedback', icon: FiCheckCircle },
   { key: 'patients', label: 'Patients', icon: FiUsers },
   { key: 'calendar', label: 'Calendar', icon: FiCalendar },
   { key: 'profile', label: 'Edit Profile', icon: FiSettings }
@@ -31,6 +32,7 @@ export default function DoctorDashboard() {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [profile, setProfile] = useState(null);
   const [appointments, setAppointments] = useState([]);
+  const [feedbackList, setFeedbackList] = useState([]);
   const [patients, setPatients] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [patientRecords, setPatientRecords] = useState([]);
@@ -42,7 +44,10 @@ export default function DoctorDashboard() {
   const [showReschedule, setShowReschedule] = useState(false);
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
   const [decisionRemarks, setDecisionRemarks] = useState('');
-  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleDay, setRescheduleDay] = useState('');
+  const [rescheduleSlot, setRescheduleSlot] = useState('');
+  const [rescheduleCalendarDate, setRescheduleCalendarDate] = useState(new Date());
+  const [avatarTilt, setAvatarTilt] = useState({ x: 0, y: 0 });
   const [recordNotes, setRecordNotes] = useState('');
   const [recordFile, setRecordFile] = useState(null);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
@@ -80,6 +85,7 @@ export default function DoctorDashboard() {
     fetchProfile();
     fetchAppointments();
     fetchPatients();
+    fetchFeedback();
   }, []);
 
   useEffect(() => {
@@ -151,6 +157,15 @@ export default function DoctorDashboard() {
     }
   };
 
+  const fetchFeedback = async () => {
+    try {
+      const res = await axios.get('/api/doctor/feedback', { headers: authHeader });
+      setFeedbackList(res.data || []);
+    } catch (err) {
+      console.error('Feedback fetch error', err);
+    }
+  };
+
   const fetchPatientRecords = async (patientUserId) => {
     try {
       const res = await axios.get(`/api/doctor/patients/${patientUserId}/records`, { headers: authHeader });
@@ -164,10 +179,19 @@ export default function DoctorDashboard() {
     setLoading(true);
     setMessage('');
     try {
-      const res = await axios.put('/api/doctor/profile', {
-        ...formData,
-        experienceYears: formData.experienceYears ? parseInt(formData.experienceYears, 10) : null
-      }, { headers: authHeader });
+      const payload = {
+        fullName: formData.fullName?.trim() || null,
+        specialization: formData.specialization?.trim() || null,
+        qualification: formData.qualification?.trim() || null,
+        experienceYears: formData.experienceYears ? parseInt(formData.experienceYears, 10) : null,
+        consultationFee: formData.consultationFee ? parseFloat(formData.consultationFee) : null,
+        availableSlots: formData.availableSlots?.trim() || null,
+        hospitalName: formData.hospitalName?.trim() || null,
+        phone: formData.phone?.trim() || null,
+        bio: formData.bio?.trim() || null
+      };
+
+      const res = await axios.put('/api/doctor/profile', payload, { headers: authHeader });
       setProfile(res.data);
       const storedUser = (() => {
         try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch (e) { return null; }
@@ -179,8 +203,9 @@ export default function DoctorDashboard() {
       }
       setMessage('Profile saved successfully');
     } catch (err) {
-      const serverMsg = err?.response?.data || 'Error saving profile';
+      const serverMsg = err?.response?.data?.message || err?.response?.data || 'Error saving profile';
       setMessage(typeof serverMsg === 'string' ? serverMsg : 'Error saving profile');
+      console.error('Doctor profile save failed', err?.response || err);
     } finally {
       setLoading(false);
     }
@@ -216,19 +241,22 @@ export default function DoctorDashboard() {
         );
       }
       if (action === 'reschedule') {
-        if (!rescheduleDate) {
-          setMessage('Please choose a new date and time');
+        if (!rescheduleDay || !rescheduleSlot) {
+          setMessage('Please select day and slot');
           setLoading(false);
           return;
         }
+
+        const appointmentDate = `${rescheduleDay}T${to24HourSlot(rescheduleSlot)}:00`;
         await axios.put(
           `/api/doctor/appointments/${appointmentId}/reschedule`,
-          { appointmentDate: rescheduleDate, remarks: decisionRemarks },
+          { appointmentDate, remarks: decisionRemarks },
           { headers: authHeader }
         );
       }
       setDecisionRemarks('');
-      setRescheduleDate('');
+      setRescheduleDay('');
+      setRescheduleSlot('');
       setShowReschedule(false);
       setRescheduleTarget(null);
       setMessage('Appointment updated');
@@ -323,10 +351,58 @@ export default function DoctorDashboard() {
   const acceptedAppointments = appointments.filter((apt) => apt.status === 'ACCEPTED' || apt.status === 'COMPLETED');
   const rejectedAppointments = appointments.filter((apt) => apt.status === 'REJECTED');
 
+  const slotOptions = useMemo(() => {
+    const rawSlots = profile?.availableSlots || '';
+    return rawSlots
+      .split(/\r?\n|,|;/)
+      .map((slot) => slot.trim())
+      .filter(Boolean);
+  }, [profile?.availableSlots]);
+
+  const dayOptions = useMemo(() => {
+    const days = [];
+    const now = new Date();
+    for (let index = 0; index < 10; index += 1) {
+      const date = new Date(now);
+      date.setDate(now.getDate() + index);
+      const value = date.toISOString().split('T')[0];
+      const label = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      days.push({ value, label });
+    }
+    return days;
+  }, []);
+
+  const to24HourSlot = (slotText) => {
+    const cleanSlot = slotText?.trim() || '';
+    if (/^\d{2}:\d{2}$/.test(cleanSlot)) return cleanSlot;
+    const match = cleanSlot.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+    if (!match) return '09:00';
+    let hour = parseInt(match[1], 10);
+    const minutes = match[2] || '00';
+    const period = match[3]?.toLowerCase();
+    if (period === 'pm' && hour !== 12) hour += 12;
+    if (period === 'am' && hour === 12) hour = 0;
+    return `${String(hour).padStart(2, '0')}:${minutes}`;
+  };
+
+  const handleRescheduleCalendarChange = (value) => {
+    const nextDate = value instanceof Date ? value : new Date(value);
+    setRescheduleCalendarDate(nextDate);
+    setRescheduleDay(nextDate.toISOString().split('T')[0]);
+  };
+
+  const handleDashboardMouseMove = (event) => {
+    const xCenter = window.innerWidth / 2;
+    const yCenter = window.innerHeight / 2;
+    const xShift = ((event.clientX - xCenter) / xCenter) * 8;
+    const yShift = ((event.clientY - yCenter) / yCenter) * 8;
+    setAvatarTilt({ x: xShift, y: yShift });
+  };
+
   const sectionTitle = navItems.find((item) => item.key === activeSection)?.label || 'Dashboard';
 
   return (
-    <div className="doctor-shell">
+    <div className="doctor-shell" onMouseMove={handleDashboardMouseMove} onMouseLeave={() => setAvatarTilt({ x: 0, y: 0 })}>
       <aside className="doctor-sidebar">
         <div className="doctor-brand">
           <FaStethoscope size={26} />
@@ -356,11 +432,24 @@ export default function DoctorDashboard() {
           </button>
         </div>
 
+        <div className="doctor-cursor-avatar">
+          <img
+            className="doctor-avatar-import"
+            src="https://api.dicebear.com/9.x/bottts-neutral/svg?seed=medvault-doctor"
+            alt="Doctor avatar"
+          />
+          <div
+            className="doctor-avatar-head"
+            style={{ transform: `translate(${avatarTilt.x}px, ${avatarTilt.y}px)` }}
+          >
+            <span className="doctor-eye left"><i style={{ transform: `translate(${avatarTilt.x * 0.2}px, ${avatarTilt.y * 0.2}px)` }} /></span>
+            <span className="doctor-eye right"><i style={{ transform: `translate(${avatarTilt.x * 0.2}px, ${avatarTilt.y * 0.2}px)` }} /></span>
+          </div>
+        </div>
+
         <div className="doctor-sidebar-footer">
           <div className="doctor-float-icons">
             <FaRobot className="doctor-float" />
-            <FaCalendarAlt className="doctor-float delay" />
-            <FaHeartbeat className="doctor-float delay-2" />
           </div>
           <p>Precision care, human touch.</p>
         </div>
@@ -461,6 +550,10 @@ export default function DoctorDashboard() {
                               className="danger"
                               onClick={() => {
                                 setDecisionRemarks('');
+                                const currentDate = new Date(apt.appointmentDate).toISOString().split('T')[0];
+                                setRescheduleDay(currentDate);
+                                setRescheduleSlot(slotOptions[0] || '');
+                                setRescheduleCalendarDate(new Date(apt.appointmentDate));
                                 setRescheduleTarget(apt);
                                 setShowReschedule(true);
                               }}
@@ -470,6 +563,10 @@ export default function DoctorDashboard() {
                             <button
                               className="ghost"
                               onClick={() => {
+                                const currentDate = new Date(apt.appointmentDate).toISOString().split('T')[0];
+                                setRescheduleDay(currentDate);
+                                setRescheduleSlot(slotOptions[0] || '');
+                                setRescheduleCalendarDate(new Date(apt.appointmentDate));
                                 setRescheduleTarget(apt);
                                 setShowReschedule(true);
                               }}
@@ -492,6 +589,42 @@ export default function DoctorDashboard() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </section>
+        )}
+
+        {activeSection === 'feedback' && (
+          <section className="doctor-section">
+            <div className="doctor-card">
+              <h2>Patient Feedback</h2>
+              {feedbackList.length === 0 ? (
+                <p className="muted">No feedback available yet.</p>
+              ) : (
+                <div className="table-responsive">
+                  <table className="doctor-table">
+                    <thead>
+                      <tr>
+                        <th>Patient</th>
+                        <th>Appointment</th>
+                        <th>Rating</th>
+                        <th>Comments</th>
+                        <th>Submitted At</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {feedbackList.map((item) => (
+                        <tr key={item.id}>
+                          <td>{item.patientName || '-'}</td>
+                          <td>#{item.appointmentId || '-'}</td>
+                          <td>{item.rating}/5</td>
+                          <td>{item.comments || '-'}</td>
+                          <td>{item.createdAt ? formatDate(item.createdAt) : '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </section>
         )}
@@ -631,8 +764,8 @@ export default function DoctorDashboard() {
           <section className="doctor-section">
             <div className="doctor-card">
               <h2>Edit Profile</h2>
-              <div className="doctor-grid doctor-grid-2">
-                <div>
+              <div className="doctor-grid doctor-grid-2 doctor-profile-layout">
+                <div className="doctor-profile-media">
                   {profilePreview ? (
                     <img src={profilePreview} alt="Doctor" className="doctor-profile-image-large" />
                   ) : (
@@ -651,7 +784,7 @@ export default function DoctorDashboard() {
                   />
                   <button className="primary" onClick={uploadProfileImage}>Upload Image</button>
                 </div>
-                <div className="doctor-profile-form">
+                <div className="doctor-profile-form doctor-profile-form-premium">
                   <label>
                     Full Name
                     <input
@@ -715,15 +848,39 @@ export default function DoctorDashboard() {
 
       {showReschedule && rescheduleTarget && (
         <div className="doctor-modal" onClick={() => setShowReschedule(false)}>
-          <div className="doctor-modal-card" onClick={(e) => e.stopPropagation()}>
-            <h3>Reschedule / Reject</h3>
-            <label>
-              New Date & Time
-              <input
-                type="datetime-local"
-                value={rescheduleDate}
-                onChange={(e) => setRescheduleDate(e.target.value)}
+          <motion.div
+            className="doctor-modal-card doctor-reschedule-card"
+            onClick={(e) => e.stopPropagation()}
+            initial={{ opacity: 0, y: 20, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.28, ease: 'easeOut' }}
+          >
+            <h3 className="doctor-modal-title"><FiCalendar className="doctor-modal-cal-icon" />Reschedule / Reject</h3>
+            <p className="muted">Patient: {rescheduleTarget?.patient?.fullName || 'Unknown'} · {formatDate(rescheduleTarget?.appointmentDate)}</p>
+            <div className="doctor-reschedule-calendar-wrap">
+              <Calendar
+                onChange={handleRescheduleCalendarChange}
+                value={rescheduleCalendarDate}
+                minDate={new Date()}
               />
+            </div>
+            <label>
+              Select Day
+              <select value={rescheduleDay} onChange={(e) => setRescheduleDay(e.target.value)}>
+                <option value="">Choose day</option>
+                {dayOptions.map((day) => (
+                  <option key={day.value} value={day.value}>{day.label}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Select Slot
+              <select value={rescheduleSlot} onChange={(e) => setRescheduleSlot(e.target.value)}>
+                <option value="">Choose slot</option>
+                {slotOptions.map((slot) => (
+                  <option key={slot} value={slot}>{slot}</option>
+                ))}
+              </select>
             </label>
             <label>
               Remarks
@@ -748,7 +905,7 @@ export default function DoctorDashboard() {
               </button>
               <button className="ghost" onClick={() => setShowReschedule(false)}>Cancel</button>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
 

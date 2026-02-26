@@ -12,11 +12,13 @@ import {
   FiLogOut,
   FiSearch,
   FiCheckCircle,
-  FiClock
+  FiClock,
+  FiMenu,
+  FiX
 } from 'react-icons/fi';
 import { FaRobot, FaUserMd, FaHospital } from 'react-icons/fa';
 import 'react-calendar/dist/Calendar.css';
-import '../styles/admin.css';
+import AdminRescheduleForm from './AdminRescheduleForm';
 
 const navItems = [
   { key: 'dashboard', label: 'Dashboard', icon: FiHome },
@@ -48,6 +50,7 @@ export default function AdminDashboard({ onLogout }) {
   });
   const [profileImage, setProfileImage] = useState(null);
   const [profilePreview, setProfilePreview] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     fetchStats();
@@ -198,10 +201,34 @@ export default function AdminDashboard({ onLogout }) {
     });
 
   const sectionTitle = navItems.find((item) => item.key === activeSection)?.label || 'Dashboard';
+  const handleSectionChange = (section) => {
+    setActiveSection(section);
+    setIsSidebarOpen(false);
+  };
 
   return (
-    <div className="admin-shell">
-      <aside className="admin-sidebar">
+    <motion.div
+      className="admin-shell"
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: 'easeOut' }}
+    >
+      <div className="admin-bg-clouds" aria-hidden="true">
+        <span className="admin-cloud cloud-1" />
+        <span className="admin-cloud cloud-2" />
+        <span className="admin-cloud cloud-3" />
+      </div>
+
+      <button
+        className="admin-mobile-toggle"
+        type="button"
+        onClick={() => setIsSidebarOpen((prev) => !prev)}
+        aria-label={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+      >
+        {isSidebarOpen ? <FiX size={20} /> : <FiMenu size={20} />}
+      </button>
+
+      <aside className={`admin-sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="admin-brand">
           <FaHospital className="brand-icon" />
           <div>
@@ -214,20 +241,29 @@ export default function AdminDashboard({ onLogout }) {
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
-              <button
+              <motion.button
                 key={item.key}
+                type="button"
                 className={`admin-nav-item ${activeSection === item.key ? 'active' : ''}`}
-                onClick={() => setActiveSection(item.key)}
+                onClick={() => handleSectionChange(item.key)}
+                whileHover={{ x: 5 }}
+                whileTap={{ scale: 0.98 }}
               >
                 <Icon size={18} />
                 <span>{item.label}</span>
-              </button>
+              </motion.button>
             );
           })}
-          <button className="admin-nav-item logout" onClick={onLogout}>
+          <motion.button
+            type="button"
+            className="admin-nav-item logout"
+            onClick={onLogout}
+            whileHover={{ x: 5 }}
+            whileTap={{ scale: 0.98 }}
+          >
             <FiLogOut size={18} />
             <span>Logout</span>
-          </button>
+          </motion.button>
         </nav>
 
         <div className="admin-sidebar-footer">
@@ -240,8 +276,13 @@ export default function AdminDashboard({ onLogout }) {
         </div>
       </aside>
 
-      <main className="admin-main">
-        <header className="admin-header">
+      <motion.main
+        className="admin-main"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
+        <header className="admin-header admin-glass-header">
           <div>
             <h1>{sectionTitle}</h1>
             <p className="muted">Real-time hospital intelligence and oversight.</p>
@@ -258,6 +299,8 @@ export default function AdminDashboard({ onLogout }) {
             </div>
           </div>
         </header>
+
+        <div className="admin-heartbeat" aria-hidden="true" />
 
         {message && <div className="admin-message">{message}</div>}
 
@@ -280,6 +323,7 @@ export default function AdminDashboard({ onLogout }) {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.05 }}
+                    whileHover={{ y: -7, scale: 1.015 }}
                   >
                     <div className="stat-icon">
                       <Icon size={20} />
@@ -434,6 +478,7 @@ export default function AdminDashboard({ onLogout }) {
 
         {activeSection === 'appointments' && (
           <section className="admin-section">
+            <AdminRescheduleForm onRescheduled={fetchAppointments} />
             <div className="admin-table-card">
               <div className="admin-table-header">
                 <h2>Appointments Overview</h2>
@@ -586,7 +631,7 @@ export default function AdminDashboard({ onLogout }) {
             </div>
           </section>
         )}
-      </main>
-    </div>
+      </motion.main>
+    </motion.div>
   );
 }
