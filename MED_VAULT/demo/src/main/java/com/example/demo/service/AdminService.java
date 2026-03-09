@@ -13,6 +13,8 @@ import com.example.demo.repository.AppointmentRepository;
 import com.example.demo.repository.DoctorProfileRepository;
 import com.example.demo.repository.PatientProfileRepository;
 import com.example.demo.repository.UserRepository;
+import com.medvault.util.FileValidator;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,6 +39,9 @@ public class AdminService {
     private final PatientProfileRepository patientProfileRepository;
     private final AppointmentRepository appointmentRepository;
     private final PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private FileValidator fileValidator;
 
     public AdminService(UserRepository userRepository,
                         DoctorProfileRepository doctorProfileRepository,
@@ -133,7 +138,9 @@ public class AdminService {
 
         if (password != null && !password.trim().isEmpty()) {
             user.setPassword(passwordEncoder.encode(password.trim()));
-        }
+        }// Validate profile image
+            fileValidator.validateProfileImage(profileImage);
+            
 
         if (profileImage != null && !profileImage.isEmpty()) {
             String savedPath = storeProfileImage(profileImage, user.getId());
@@ -153,9 +160,10 @@ public class AdminService {
 
     private String storeProfileImage(MultipartFile file, Long userId) throws IOException {
         String originalName = file.getOriginalFilename();
+        String sanitizedName = fileValidator.sanitizeFilename(originalName);
         String ext = "";
-        if (originalName != null && originalName.contains(".")) {
-            ext = originalName.substring(originalName.lastIndexOf('.'));
+        if (sanitizedName != null && sanitizedName.contains(".")) {
+            ext = sanitizedName.substring(sanitizedName.lastIndexOf('.'));
         }
 
         String fileName = "profile-" + UUID.randomUUID() + ext;
@@ -163,8 +171,14 @@ public class AdminService {
         Files.createDirectories(uploadDir);
 
         Path target = uploadDir.resolve(fileName);
+        
+        // Security check: ensure target is within upload directory
+        if (!target.normalize().startsWith(uploadDir.normalize())) {
+            throw new IOException("Invalid file path");
+        }
+        
         Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
-        return target.toString().replace("\\", "/");
+        return target.toString().replace("\\\\", "/");
     }
 
     private AdminDoctorDTO toAdminDoctor(DoctorProfile profile) {

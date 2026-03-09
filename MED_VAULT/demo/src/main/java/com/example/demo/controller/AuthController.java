@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -54,8 +55,13 @@ public class AuthController {
             if (u.isPresent()) identifier = u.get().getUsername();
         }
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(identifier, loginRequest.getPassword()));
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(identifier, loginRequest.getPassword()));
+        } catch (AuthenticationException ex) {
+            return ResponseEntity.status(401).body("Invalid username/email or password");
+        }
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtUtils.generateJwtToken(authentication);
@@ -68,11 +74,13 @@ public class AuthController {
         }
 
         User user = userRepository.findByUsername(userDetails.getUsername()).orElse(null);
+        Long userId = user != null ? user.getId() : null;
         String displayName = user != null ? user.getFullName() : null;
         String email = user != null ? user.getEmail() : null;
         String profileImagePath = user != null ? user.getProfileImagePath() : null;
 
-        return ResponseEntity.ok(new JwtResponse(jwt,
+        return ResponseEntity.ok(new JwtResponse(userId,
+                                                 jwt,
                                                  userDetails.getUsername(),
                                                  role,
                                                  displayName,
@@ -144,6 +152,7 @@ public class AuthController {
         String role = user.getRole();
 
         return ResponseEntity.ok(new JwtResponse(
+            user.getId(),
             jwt,
             user.getUsername(),
             role,

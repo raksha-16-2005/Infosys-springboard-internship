@@ -1,6 +1,7 @@
 package com.example.demo.dto;
 
 public class JwtResponse {
+    private Long id;
     private String token;
     private String type = "Bearer";
     private String username;
@@ -9,7 +10,8 @@ public class JwtResponse {
     private String email;
     private String profileImagePath;
 
-    public JwtResponse(String accessToken, String username, String role, String displayName, String email, String profileImagePath) {
+    public JwtResponse(Long id, String accessToken, String username, String role, String displayName, String email, String profileImagePath) {
+        this.id = id;
         this.token = accessToken;
         this.username = username;
         this.role = role;
@@ -18,6 +20,8 @@ public class JwtResponse {
         this.profileImagePath = profileImagePath;
     }
 
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
     public String getToken() { return token; }
     public void setToken(String token) { this.token = token; }
     public String getType() { return type; }

@@ -143,17 +143,22 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
                             <form onSubmit={async e=>{
                                 e.preventDefault(); setLoading(true); setMessage(null);
                                 try{
-                                    const res = await axios.post('/api/auth/login',{username: formData.username, password: formData.password});
+                                    const identifier = (formData.username || '').trim() || (formData.email || '').trim();
+                                    const res = await axios.post('/api/auth/login',{username: identifier, password: formData.password});
                                     localStorage.setItem('token', res.data.token);
                                     localStorage.setItem('user', JSON.stringify(res.data));
                                     onLoginSuccess(res.data);
                                     handleClose();
-                                }catch(err){ setMessage({type:'error', text: err.response?.data || 'Login failed'}) }
+                                }catch(err){
+                                    localStorage.removeItem('token');
+                                    localStorage.removeItem('user');
+                                    setMessage({type:'error', text: err.response?.data || 'Login failed'})
+                                }
                                 finally{ setLoading(false) }
                             }}>
                                 <div className="form-group">
-                                    <label>Username</label>
-                                    <input type="text" name="username" value={formData.username} onChange={handleChange} required />
+                                    <label>Username or Email</label>
+                                    <input type="text" name="username" value={formData.username} onChange={handleChange} placeholder="Enter username or email" required />
                                 </div>
                                 <div className="form-group">
                                     <label>Password</label>

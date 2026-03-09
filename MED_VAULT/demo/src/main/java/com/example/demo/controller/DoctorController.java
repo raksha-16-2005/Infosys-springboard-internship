@@ -89,14 +89,31 @@ public class DoctorController {
     @GetMapping("/appointments/{appointmentId}")
     @PreAuthorize("hasRole('DOCTOR')")
     public ResponseEntity<?> getAppointmentDetail(@PathVariable Long appointmentId) {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        
         AppointmentDTO appointment = doctorService.getAppointmentDetail(appointmentId);
         if (appointment == null) return ResponseEntity.notFound().build();
+        
+        // Verify ownership: Doctor can only view their own appointments
+        if (!doctorService.isDoctorAppointment(user, appointmentId)) {
+            return ResponseEntity.status(403).body("Access denied: You can only view your own appointments");
+        }
+        
         return ResponseEntity.ok(appointment);
     }
 
     @PutMapping("/appointments/{appointmentId}/status")
     @PreAuthorize("hasRole('DOCTOR')")
     public ResponseEntity<?> updateAppointmentStatus(@PathVariable Long appointmentId, @RequestBody Map<String, String> body) {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        
+        // Verify ownership: Doctor can only update their own appointments
+        if (!doctorService.isDoctorAppointment(user, appointmentId)) {
+            return ResponseEntity.status(403).body("Access denied: You can only update your own appointments");
+        }
+        
         String status = body.get("status");
         AppointmentDTO appointment = doctorService.updateAppointmentStatus(appointmentId, status);
         if (appointment == null) return ResponseEntity.badRequest().body("Appointment not found");
@@ -106,6 +123,14 @@ public class DoctorController {
     @PutMapping("/appointments/{appointmentId}/accept")
     @PreAuthorize("hasRole('DOCTOR')")
     public ResponseEntity<?> acceptAppointment(@PathVariable Long appointmentId) {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        
+        // Verify ownership
+        if (!doctorService.isDoctorAppointment(user, appointmentId)) {
+            return ResponseEntity.status(403).body("Access denied: You can only accept your own appointments");
+        }
+        
         AppointmentDTO appointment = doctorService.acceptAppointment(appointmentId);
         if (appointment == null) return ResponseEntity.badRequest().body("Appointment not found");
         return ResponseEntity.ok(appointment);
@@ -114,6 +139,14 @@ public class DoctorController {
     @PutMapping("/appointments/{appointmentId}/reject")
     @PreAuthorize("hasRole('DOCTOR')")
     public ResponseEntity<?> rejectAppointment(@PathVariable Long appointmentId, @RequestBody AppointmentDecisionRequest body) {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        
+        // Verify ownership
+        if (!doctorService.isDoctorAppointment(user, appointmentId)) {
+            return ResponseEntity.status(403).body("Access denied: You can only reject your own appointments");
+        }
+        
         AppointmentDTO appointment = doctorService.rejectAppointment(appointmentId, body.getRemarks());
         if (appointment == null) return ResponseEntity.badRequest().body("Appointment not found");
         return ResponseEntity.ok(appointment);
@@ -122,6 +155,14 @@ public class DoctorController {
     @PutMapping("/appointments/{appointmentId}/reschedule")
     @PreAuthorize("hasRole('DOCTOR')")
     public ResponseEntity<?> rescheduleAppointment(@PathVariable Long appointmentId, @RequestBody AppointmentRescheduleRequest body) {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        
+        // Verify ownership
+        if (!doctorService.isDoctorAppointment(user, appointmentId)) {
+            return ResponseEntity.status(403).body("Access denied: You can only reschedule your own appointments");
+        }
+        
         LocalDateTime newDate = null;
         if (body.getAppointmentDate() != null && !body.getAppointmentDate().isBlank()) {
             newDate = LocalDateTime.parse(body.getAppointmentDate());
@@ -134,6 +175,14 @@ public class DoctorController {
     @PutMapping("/appointments/{appointmentId}/consultation")
     @PreAuthorize("hasRole('DOCTOR')")
     public ResponseEntity<?> updateConsultationNotes(@PathVariable Long appointmentId, @RequestBody Map<String, String> body) {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        
+        // Verify ownership
+        if (!doctorService.isDoctorAppointment(user, appointmentId)) {
+            return ResponseEntity.status(403).body("Access denied: You can only update consultation notes for your own appointments");
+        }
+        
         String notes = body.get("notes");
         String symptoms = body.get("symptoms");
         String consultationNotes = body.get("consultationNotes");
@@ -145,6 +194,14 @@ public class DoctorController {
     @PostMapping("/appointments/{appointmentId}/prescriptions")
     @PreAuthorize("hasRole('DOCTOR')")
     public ResponseEntity<?> addPrescription(@PathVariable Long appointmentId, @RequestBody PrescriptionDTO dto) {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        
+        // Verify ownership
+        if (!doctorService.isDoctorAppointment(user, appointmentId)) {
+            return ResponseEntity.status(403).body("Access denied: You can only add prescriptions for your own appointments");
+        }
+        
         PrescriptionResponseDTO prescription = doctorService.addPrescription(appointmentId, dto);
         if (prescription == null) return ResponseEntity.badRequest().body("Appointment not found");
         return ResponseEntity.ok(prescription);
@@ -153,6 +210,14 @@ public class DoctorController {
     @GetMapping("/appointments/{appointmentId}/prescriptions")
     @PreAuthorize("hasRole('DOCTOR')")
     public ResponseEntity<?> getPrescription(@PathVariable Long appointmentId) {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        
+        // Verify ownership
+        if (!doctorService.isDoctorAppointment(user, appointmentId)) {
+            return ResponseEntity.status(403).body("Access denied: You can only view prescriptions for your own appointments");
+        }
+        
         PrescriptionResponseDTO prescription = doctorService.getPrescription(appointmentId);
         if (prescription == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(prescription);
@@ -178,7 +243,9 @@ public class DoctorController {
     @GetMapping("/patients/{patientUserId}/records")
     @PreAuthorize("hasRole('DOCTOR')")
     public ResponseEntity<?> getPatientRecords(@PathVariable Long patientUserId) {
-        return ResponseEntity.ok(doctorService.getPatientRecords(patientUserId));
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        return ResponseEntity.ok(doctorService.getPatientRecords(user, patientUserId));
     }
 
     @PostMapping(value = "/patients/{patientUserId}/records", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

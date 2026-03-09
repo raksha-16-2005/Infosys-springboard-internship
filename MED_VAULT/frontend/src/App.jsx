@@ -1,42 +1,82 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Link, useNavigate } from 'react-router-dom'
+import { Routes, Route, Link, useNavigate, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion';
-import AuthModal from './components/AuthModal';
-import ForgotPassword from './components/ForgotPassword';
-import ResetPassword from './components/ResetPassword';
-import PatientDashboardNew from './components/PatientDashboardNew';
-import DoctorDashboardNew from './components/DoctorDashboardNew';
-import AdminDashboard from './components/AdminDashboard';
+
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+
+    componentDidCatch(error, errorInfo) {
+        console.error('Component Error:', error, errorInfo);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <h2>⚠️ Component Error</h2>
+                    <p>{this.state.error?.message}</p>
+                    <button onClick={() => window.location.reload()} style={{
+                        padding: '10px 20px',
+                        backgroundColor: '#2563eb',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer'
+                    }}>
+                        Reload Page
+                    </button>
+                </div>
+            );
+        }
+
+        return this.props.children;
+    }
+}
+
+// Lazy load heavy components to avoid blank pages
+const AuthModal = React.lazy(() => import('./components/AuthModal'));
+const ForgotPassword = React.lazy(() => import('./components/ForgotPassword'));
+const ResetPassword = React.lazy(() => import('./components/ResetPassword'));
+const PatientDashboardNew = React.lazy(() => import('./components/PatientDashboardNew'));
+const DoctorDashboardNew = React.lazy(() => import('./components/DoctorDashboardNew'));
+const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
+
+const LoadingFallback = () => (
+    <div style={{ padding: '40px', textAlign: 'center' }}>
+        <h2>Loading...</h2>
+    </div>
+);
+
 import './styles/global.css';
 
 function App() {
     const [isAuthOpen, setAuthOpen] = useState(false);
     const [user, setUser] = useState(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         // Check for existing session
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
-            setUser(JSON.parse(storedUser));
-        }
-    }, []);
-
-    useEffect(() => {
-        const handleUserUpdated = () => {
-            const storedUser = localStorage.getItem('user');
-            if (storedUser) {
+            try {
                 setUser(JSON.parse(storedUser));
+            } catch (e) {
+                console.error('Failed to parse stored user', e);
             }
-        };
-        window.addEventListener('userUpdated', handleUserUpdated);
-        return () => window.removeEventListener('userUpdated', handleUserUpdated);
+        }
     }, []);
 
     const handleLoginSuccess = (userData) => {
         setUser(userData);
     };
-
-    const navigate = useNavigate();
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -51,6 +91,27 @@ function App() {
             : user?.role && user.role.includes('PATIENT')
                 ? '/patient'
                 : '/doctor';
+
+    const ProtectedRoute = ({ allowedRoles, children }) => {
+        const token = localStorage.getItem('token');
+        
+        React.useEffect(() => {
+            if (!token || !user) {
+                setAuthOpen(true);
+            }
+        }, [token, user]);
+        
+        if (!token || !user) {
+            return <Navigate to="/" replace />;
+        }
+
+        const normalizedRole = String(user.role || '').replace(/^ROLE_/, '');
+        if (!allowedRoles.includes(normalizedRole)) {
+            return <Navigate to={dashboardPath} replace />;
+        }
+
+        return children;
+    };
 
     const HomePage = () => {
         return (
@@ -274,26 +335,55 @@ function App() {
                             <button className="btn btn-primary" onClick={() => setAuthOpen(true)}>Sign Up</button>
                         </>
                     )}
-
                 </div>
             </nav>
 
             <div className="app-page-content">
-                <Routes>
-                    <Route path="/" element={<HomePage />} />
-                    <Route path="/forgot-password" element={<ForgotPassword />} />
-                    <Route path="/reset-password" element={<ResetPassword />} />
-                    <Route path="/patient" element={<PatientDashboardNew />} />
-                    <Route path="/doctor" element={<DoctorDashboardNew />} />
-                    <Route path="/admin" element={<AdminDashboard onLogout={handleLogout} />} />
-                </Routes>
+                <ErrorBoundary>
+                    <Routes>
+                        <Route path="/" element={<HomePage />} />
+                        <Route path="/forgot-password" element={
+                            <React.Suspense fallback={<LoadingFallback />}>
+                                <ForgotPassword />
+                            </React.Suspense>
+                        } />
+                        <Route path="/reset-password" element={
+                            <React.Suspense fallback={<LoadingFallback />}>
+                                <ResetPassword />
+                            </React.Suspense>
+                        } />
+                        <Route path="/patient" element={
+                            <ProtectedRoute allowedRoles={['PATIENT']}>
+                                <React.Suspense fallback={<LoadingFallback />}>
+                                    <PatientDashboardNew />
+                                </React.Suspense>
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/doctor" element={
+                            <ProtectedRoute allowedRoles={['DOCTOR']}>
+                                <React.Suspense fallback={<LoadingFallback />}>
+                                    <DoctorDashboardNew />
+                                </React.Suspense>
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/admin" element={
+                            <ProtectedRoute allowedRoles={['ADMIN']}>
+                                <React.Suspense fallback={<LoadingFallback />}>
+                                    <AdminDashboard onLogout={handleLogout} />
+                                </React.Suspense>
+                            </ProtectedRoute>
+                        } />
+                    </Routes>
+                </ErrorBoundary>
             </div>
 
-            <AuthModal
-                isOpen={isAuthOpen}
-                onClose={() => setAuthOpen(false)}
-                onLoginSuccess={handleLoginSuccess}
-            />
+            <React.Suspense fallback={null}>
+                <AuthModal
+                    isOpen={isAuthOpen}
+                    onClose={() => setAuthOpen(false)}
+                    onLoginSuccess={handleLoginSuccess}
+                />
+            </React.Suspense>
         </div>
     )
 }

@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.dto.*;
 import com.example.demo.model.User;
 import com.example.demo.repository.UserRepository;
+import com.example.demo.service.DoctorConsentService;
 import com.example.demo.service.PatientService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,10 +18,14 @@ public class PatientController {
 
     private final UserRepository userRepository;
     private final PatientService patientService;
+    private final DoctorConsentService doctorConsentService;
 
-    public PatientController(UserRepository userRepository, PatientService patientService) {
+    public PatientController(UserRepository userRepository,
+                             PatientService patientService,
+                             DoctorConsentService doctorConsentService) {
         this.userRepository = userRepository;
         this.patientService = patientService;
+        this.doctorConsentService = doctorConsentService;
     }
 
     private User getAuthenticatedUser() {
@@ -76,8 +81,15 @@ public class PatientController {
     @GetMapping("/appointments/{appointmentId}")
     @PreAuthorize("hasRole('PATIENT')")
     public ResponseEntity<?> getAppointmentDetail(@PathVariable Long appointmentId) {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
         AppointmentDTO appointment = patientService.getAppointmentDetail(appointmentId);
         if (appointment == null) return ResponseEntity.notFound().build();
+        
+        // Verify ownership: Patient can only view their own appointments
+        if (!patientService.isPatientAppointment(user, appointmentId)) {
+            return ResponseEntity.status(403).body("Access denied: You can only view your own appointments");
+        }
         return ResponseEntity.ok(appointment);
     }
 
@@ -92,6 +104,14 @@ public class PatientController {
     @GetMapping("/prescriptions/{appointmentId}")
     @PreAuthorize("hasRole('PATIENT')")
     public ResponseEntity<?> getPrescription(@PathVariable Long appointmentId) {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        
+        // Verify ownership: Patient can only view prescriptions for their own appointments
+        if (!patientService.isPatientAppointment(user, appointmentId)) {
+            return ResponseEntity.status(403).body("Access denied: You can only view your own prescriptions");
+        }
+        
         PrescriptionResponseDTO prescription = patientService.getPrescription(appointmentId);
         if (prescription == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(prescription);
@@ -130,6 +150,12 @@ public class PatientController {
     public ResponseEntity<?> submitFeedback(@RequestBody FeedbackRequest request) {
         User user = getAuthenticatedUser();
         if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        
+        // Verify ownership: Patient can only submit feedback for their own appointments
+        if (request.getAppointmentId() != null && !patientService.isPatientAppointment(user, request.getAppointmentId())) {
+            return ResponseEntity.status(403).body("Access denied: You can only submit feedback for your own appointments");
+        }
+        
         FeedbackDTO feedback = patientService.submitFeedback(user, request);
         if (feedback == null) {
             return ResponseEntity.badRequest().body("Failed to submit feedback. Ensure appointment is completed and belongs to you.");
@@ -164,6 +190,37 @@ public class PatientController {
         if (user == null) return ResponseEntity.status(401).body("Unauthorized");
         String imagePath = patientService.getProfileImagePath(user);
         return ResponseEntity.ok(imagePath != null ? imagePath : "");
+    }
+
+    @PostMapping("/consents")
+    @PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<?> grantDoctorConsent(@RequestBody DoctorConsentRequest request) {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        if (request == null || request.getDoctorId() == null) {
+            return ResponseEntity.badRequest().body("doctorId is required");
+        }
+        return ResponseEntity.ok(
+                doctorConsentService.grantConsent(user, request.getDoctorId(), request.getReason())
+        );
+    }
+
+    @PutMapping("/consents/{doctorId}/revoke")
+    @PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<?> revokeDoctorConsent(@PathVariable Long doctorId,
+                                                 @RequestBody(required = false) DoctorConsentRequest request) {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        String reason = request != null ? request.getReason() : null;
+        return ResponseEntity.ok(doctorConsentService.revokeConsent(user, doctorId, reason));
+    }
+
+    @GetMapping("/consents")
+    @PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<?> listDoctorConsents() {
+        User user = getAuthenticatedUser();
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        return ResponseEntity.ok(doctorConsentService.listConsents(user));
     }
 }
 

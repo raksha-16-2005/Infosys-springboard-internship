@@ -3,6 +3,8 @@ package com.example.demo.service;
 import com.example.demo.dto.*;
 import com.example.demo.model.*;
 import com.example.demo.repository.*;
+import com.medvault.util.FileValidator;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -26,19 +28,25 @@ public class DoctorService {
     private final UserRepository userRepository;
     private final MedicalRecordRepository medicalRecordRepository;
     private final AppointmentFeedbackRepository feedbackRepository;
+    private final DoctorConsentService doctorConsentService;
+
+    @Autowired
+    private FileValidator fileValidator;
 
     public DoctorService(DoctorProfileRepository doctorProfileRepo,
                          AppointmentRepository apptRepo,
                          PrescriptionRepository prescriptionRepo,
                          UserRepository userRepository,
                          MedicalRecordRepository medicalRecordRepository,
-                         AppointmentFeedbackRepository feedbackRepository) {
+                         AppointmentFeedbackRepository feedbackRepository,
+                         DoctorConsentService doctorConsentService) {
         this.doctorProfileRepo = doctorProfileRepo;
         this.apptRepo = apptRepo;
         this.prescriptionRepo = prescriptionRepo;
         this.userRepository = userRepository;
         this.medicalRecordRepository = medicalRecordRepository;
         this.feedbackRepository = feedbackRepository;
+        this.doctorConsentService = doctorConsentService;
     }
 
     public DoctorProfileDTO getProfile(User user) {
@@ -95,6 +103,9 @@ public class DoctorService {
     }
 
     public DoctorProfileDTO updateProfileImage(User user, MultipartFile file) throws IOException {
+        // Validate profile image
+        fileValidator.validateProfileImage(file);
+        
         DoctorProfile profile = doctorProfileRepo.findByUser(user).orElse(new DoctorProfile());
         profile.setUser(user);
         String storedPath = storeProfileImage(file, user.getId());
@@ -202,9 +213,14 @@ public class DoctorService {
             .collect(Collectors.toList());
     }
 
-    public List<MedicalRecordDTO> getPatientRecords(Long patientUserId) {
+    public List<MedicalRecordDTO> getPatientRecords(User doctorUser, Long patientUserId) {
         User patient = userRepository.findById(patientUserId).orElse(null);
         if (patient == null) return List.of();
+
+        if (!doctorConsentService.hasActiveConsent(patient, doctorUser)) {
+            throw new org.springframework.security.access.AccessDeniedException("Access denied: no active patient consent");
+        }
+
         return medicalRecordRepository.findByPatient(patient).stream()
                 .map(this::toMedicalRecord)
                 .collect(Collectors.toList());
@@ -213,6 +229,12 @@ public class DoctorService {
     public MedicalRecordDTO addMedicalRecord(Long patientUserId, User doctor, String notes, MultipartFile file) throws IOException {
         User patient = userRepository.findById(patientUserId).orElse(null);
         if (patient == null) return null;
+        
+        // Validate file if provided
+        if (file != null && !file.isEmpty()) {
+            fileValidator.validateFile(file);
+        }
+        
         MedicalRecord record = new MedicalRecord();
         record.setPatient(patient);
         record.setDoctorName(doctor.getFullName() != null ? doctor.getFullName() : doctor.getUsername());
@@ -271,6 +293,28 @@ public class DoctorService {
                 .stream()
                 .map(this::toFeedbackDTO)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Verify that an appointment belongs to the doctor
+     */
+    public boolean isDoctorAppointment(User doctor, Long appointmentId) {
+        if (doctor == null || appointmentId == null) {
+            return false;
+        }
+        
+        DoctorProfile doctorProfile = doctorProfileRepo.findByUser(doctor).orElse(null);
+        if (doctorProfile == null) {
+            return false;
+        }
+        
+        Appointment appointment = apptRepo.findById(appointmentId).orElse(null);
+        if (appointment == null) {
+            return false;
+        }
+        
+        return appointment.getDoctor() != null && 
+               appointment.getDoctor().getId().equals(doctorProfile.getId());
     }
 
     private AppointmentDTO convertToAppointmentDTO(Appointment a) {
@@ -368,29 +412,43 @@ public class DoctorService {
 
     private String storeProfileImage(MultipartFile file, Long userId) throws IOException {
         String originalName = file.getOriginalFilename();
+        String sanitizedName = fileValidator.sanitizeFilename(originalName);
         String ext = "";
-        if (originalName != null && originalName.contains(".")) {
-            ext = originalName.substring(originalName.lastIndexOf('.'));
+        if (sanitizedName != null && sanitizedName.contains(".")) {
+            ext = sanitizedName.substring(sanitizedName.lastIndexOf('.'));
         }
         String fileName = "doctor-profile-" + UUID.randomUUID() + ext;
         Path uploadDir = Paths.get("uploads", "doctors", String.valueOf(userId));
         Files.createDirectories(uploadDir);
         Path target = uploadDir.resolve(fileName);
+        
+        // Security check: ensure target is within upload directory
+        if (!target.normalize().startsWith(uploadDir.normalize())) {
+            throw new IOException("Invalid file path");
+        }
+        
         Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
-        return target.toString().replace("\\", "/");
+        return target.toString().replace("\\\\", "/");
     }
 
     private String storeMedicalRecord(MultipartFile file, Long patientUserId) throws IOException {
         String originalName = file.getOriginalFilename();
+        String sanitizedName = fileValidator.sanitizeFilename(originalName);
         String ext = "";
-        if (originalName != null && originalName.contains(".")) {
-            ext = originalName.substring(originalName.lastIndexOf('.'));
+        if (sanitizedName != null && sanitizedName.contains(".")) {
+            ext = sanitizedName.substring(sanitizedName.lastIndexOf('.'));
         }
         String fileName = "record-" + UUID.randomUUID() + ext;
         Path uploadDir = Paths.get("uploads", "medical-records", String.valueOf(patientUserId));
         Files.createDirectories(uploadDir);
         Path target = uploadDir.resolve(fileName);
+        
+        // Security check: ensure target is within upload directory
+        if (!target.normalize().startsWith(uploadDir.normalize())) {
+            throw new IOException("Invalid file path");
+        }
+        
         Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
-        return target.toString().replace("\\", "/");
+        return target.toString().replace("\\\\", "/");
     }
 }

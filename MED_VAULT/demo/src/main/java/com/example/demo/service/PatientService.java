@@ -3,6 +3,8 @@ package com.example.demo.service;
 import com.example.demo.dto.*;
 import com.example.demo.model.*;
 import com.example.demo.repository.*;
+import com.medvault.util.FileValidator;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
@@ -24,6 +26,9 @@ public class PatientService {
     private final UserRepository userRepository;
     private final MedicalRecordRepository medicalRecordRepo;
     private final AppointmentFeedbackRepository feedbackRepository;
+
+    @Autowired
+    private FileValidator fileValidator;
 
     public PatientService(PatientProfileRepository profileRepo,
                           AppointmentRepository apptRepo,
@@ -319,6 +324,9 @@ public class PatientService {
     public String updateProfileImage(User patient, MultipartFile file) {
         if (file.isEmpty()) return null;
         
+        // Validate profile image
+        fileValidator.validateProfileImage(file);
+        
         try {
             String uploadDir = "uploads/patients/" + patient.getId();
             Path uploadPath = Paths.get(uploadDir);
@@ -327,11 +335,17 @@ public class PatientService {
             }
             
             String originalFilename = file.getOriginalFilename();
-            String fileExtension = originalFilename != null && originalFilename.contains(".")
-                    ? originalFilename.substring(originalFilename.lastIndexOf("."))
+            String sanitizedFilename = fileValidator.sanitizeFilename(originalFilename);
+            String fileExtension = sanitizedFilename != null && sanitizedFilename.contains(".")
+                    ? sanitizedFilename.substring(sanitizedFilename.lastIndexOf("."))
                     : "";
             String fileName = "profile_" + System.currentTimeMillis() + fileExtension;
             Path filePath = uploadPath.resolve(fileName);
+            
+            // Security check: ensure target is within upload directory
+            if (!filePath.normalize().startsWith(uploadPath.normalize())) {
+                throw new IOException("Invalid file path");
+            }
             
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
             
@@ -348,6 +362,28 @@ public class PatientService {
 
     public String getProfileImagePath(User patient) {
         return patient.getProfileImagePath();
+    }
+
+    /**
+     * Verify that an appointment belongs to the patient
+     */
+    public boolean isPatientAppointment(User patient, Long appointmentId) {
+        if (patient == null || appointmentId == null) {
+            return false;
+        }
+        
+        PatientProfile patientProfile = profileRepo.findByUser(patient).orElse(null);
+        if (patientProfile == null) {
+            return false;
+        }
+        
+        Appointment appointment = apptRepo.findById(appointmentId).orElse(null);
+        if (appointment == null) {
+            return false;
+        }
+        
+        return appointment.getPatient() != null && 
+               appointment.getPatient().getId().equals(patientProfile.getId());
     }
 
     private FeedbackDTO toFeedbackDTO(AppointmentFeedback feedback) {

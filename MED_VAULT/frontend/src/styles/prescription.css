@@ -20,4 +20,86 @@
   max-width: 900px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);\n}\n\n.prescription-header {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  padding: 1.5rem;\n  border-bottom: 2px solid var(--border-light);\n  background-color: var(--bg-light);\n  position: sticky;\n  top: 0;\n  z-index: 10;\n}\n\n.prescription-header h2 {\n  margin: 0;\n  font-size: 1.5rem;\n  color: var(--text-dark);\n}\n\n.prescription-actions {\n  display: flex;\n  gap: 1rem;\n  align-items: center;\n}\n\n.btn-close {\n  background: none;\n  border: none;\n  cursor: pointer;\n  color: var(--text-light);\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  padding: 0.5rem;\n  border-radius: 8px;\n  transition: all 0.2s ease;\n}\n\n.btn-close:hover {\n  background-color: var(--accent-light);\n  color: var(--primary-color);\n}\n\n/* Prescription Document */\n.prescription-document {\n  padding: 2.5rem 2rem;\n  background-color: white;\n  font-size: 0.95rem;\n}\n\n/* Hospital Header */\n.prescription-hospital {\n  display: flex;\n  justify-content: space-between;\n  align-items: flex-start;\n  margin-bottom: 2rem;\n  text-align: left;\n}\n\n.hospital-name {\n  font-size: 1.75rem;\n  font-weight: 700;\n  color: var(--primary-color);\n  margin: 0 0 0.25rem 0;\n}\n\n.hospital-subtitle {\n  font-size: 0.9rem;\n  color: var(--text-light);\n  margin: 0;\n}\n\n.hospital-contact {\n  text-align: right;\n}\n\n.hospital-contact p {\n  margin: 0.25rem 0;\n  font-size: 0.85rem;\n  color: var(--text-light);\n}\n\n.document-divider {\n  border: none;\n  border-top: 2px solid var(--primary-color);\n  margin: 1.5rem 0 2rem 0;\n}\n\n/* Patient Info Grid */\n.patient-info-grid {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 2rem;\n  margin-bottom: 2rem;\n  background-color: var(--accent-lighter);\n  padding: 1.5rem;\n  border-radius: 10px;\n  border: 1px solid var(--border-light);\n}\n\n.info-block {\n  flex: 1;\n}\n\n.info-title {\n  font-size: 0.8rem;\n  text-transform: uppercase;\n  letter-spacing: 1px;\n  color: var(--text-dark);\n  font-weight: 700;\n  margin: 0 0 1rem 0;\n  padding-bottom: 0.75rem;\n  border-bottom: 2px solid var(--primary-color);\n}\n\n.info-content p {\n  margin: 0.5rem 0;\n  font-size: 0.9rem;\n  color: var(--text-dark);\n}\n\n.info-content strong {\n  color: var(--text-dark);\n  font-weight: 600;\n}\n\n/* Prescription Sections */\n.prescription-section {\n  margin-bottom: 2rem;\n  padding-bottom: 1.5rem;\n  border-bottom: 1px solid var(--border-light);\n}\n\n.prescription-section:last-of-type {\n  border-bottom: none;\n}\n\n.section-title {\n  font-size: 0.85rem;\n  text-transform: uppercase;\n  letter-spacing: 1px;\n  color: var(--text-dark);\n  font-weight: 700;\n  margin: 0 0 1rem 0;\n  padding-bottom: 0.75rem;\n  border-bottom: 2px solid var(--accent-teal);\n}\n\n.section-content {\n  color: var(--text-dark);\n  line-height: 1.6;\n}\n\n/* Diagnosis */\n.diagnosis-text {\n  padding: 1rem;\n  background-color: var(--accent-lighter);\n  border-left: 4px solid var(--accent-teal);\n  border-radius: 6px;\n  color: var(--text-dark);\n  margin: 0;\n  font-style: italic;\n}\n\n/* Medicines Table */\n.medicines-table {\n  overflow-x: auto;\n  border-radius: 10px;\n  border: 1px solid var(--border-light);\n}\n\n.medicines-table table {\n  width: 100%;\n  border-collapse: collapse;\n  font-size: 0.9rem;\n}\n\n.medicines-table thead {\n  background: linear-gradient(135deg, var(--accent-light), var(--accent-lighter));\n}\n\n.medicines-table th {\n  padding: 1rem;\n  text-align: left;\n  font-weight: 600;\n  color: var(--text-dark);\n  border: none;\n  font-size: 0.85rem;\n  text-transform: uppercase;\n  letter-spacing: 0.5px;\n}\n\n.medicines-table td {\n  padding: 1rem;\n  border-bottom: 1px solid var(--border-light);\n  color: var(--text-dark);\n}\n\n.medicines-table tbody tr:hover {\n  background-color: var(--bg-light);\n}\n\n/* Tests List */\n.tests-list {\n  display: grid;\n  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));\n  gap: 1rem;\n}\n\n.test-item {\n  display: flex;\n  align-items: center;\n  gap: 0.75rem;\n  padding: 0.75rem;\n  background-color: var(--accent-lighter);\n  border-radius: 8px;\n  border: 1px solid var(--border-light);\n  color: var(--text-dark);\n  font-size: 0.9rem;\n}\n\n.test-bullet {\n  color: var(--accent-teal);\n  font-weight: 700;\n  font-size: 1.2rem;\n}\n\n/* Signature Section */\n.signature-section {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 3rem;\n  margin: 3rem 0 2rem 0;\n  padding-top: 2rem;\n  border-top: 2px solid var(--border-light);\n}\n\n.signature-block {\n  text-align: center;\n}\n\n.signature-block p:first-child {\n  font-size: 2rem;\n  line-height: 0.5;\n  color: var(--text-light);\n  margin: 0 0 1rem 0;\n  border-bottom: 1px solid var(--text-dark);\n  padding-bottom: 0.5rem;\n}\n\n.signature-label {\n  margin: 0;\n  font-size: 0.85rem;\n  font-weight: 600;\n  color: var(--text-dark);\n  text-transform: uppercase;\n  letter-spacing: 0.5px;\n}\n\n/* Footer */\n.prescription-footer {\n  text-align: center;\n  padding: 1.5rem;\n  background-color: var(--accent-lighter);\n  border-radius: 10px;\n  border: 1px solid var(--border-light);\n  font-size: 0.85rem;\n  color: var(--text-light);\n}\n\n.prescription-footer p {\n  margin: 0.5rem 0;\n}\n\n/* Print Styles */\n@media print {\n  .prescription-modal-overlay {\n    background-color: white;\n  }\n\n  .prescription-modal {\n    max-width: 100%;\n    border-radius: 0;\n    box-shadow: none;\n    max-height: 100vh;\n  }\n\n  .prescription-header {\n    display: none;\n  }\n\n  .prescription-document {\n    padding: 0;\n  }\n\n  body {\n    background: white;\n  }\n\n  .btn {\n    display: none;\n  }\n}\n\n/* Responsive */\n@media (max-width: 768px) {\n  .prescription-modal-overlay {\n    padding: 1rem;\n  }\n\n  .prescription-modal {\n    border-radius: 12px;\n  }\n\n  .prescription-document {\n    padding: 1.5rem 1rem;\n  }\n\n  .prescription-hospital {\n    flex-direction: column;\n    gap: 1rem;\n  }\n\n  .hospital-contact {\n    text-align: left;\n  }\n\n  .patient-info-grid {\n    grid-template-columns: 1fr;\n    gap: 1rem;\n  }\n\n  .signature-section {\n    grid-template-columns: 1fr;\n    gap: 1.5rem;\n  }\n\n  .medicines-table {\n    font-size: 0.85rem;\n  }\n\n  .medicines-table th,\n  .medicines-table td {\n    padding: 0.75rem 0.5rem;\n  }\n\n  .tests-list {\n    grid-template-columns: 1fr;\n  }\n}\n\n/* Scrollbar */\n.prescription-modal::-webkit-scrollbar {\n  width: 8px;\n}\n\n.prescription-modal::-webkit-scrollbar-track {\n  background: var(--bg-light);\n  border-radius: 10px;\n}\n\n.prescription-modal::-webkit-scrollbar-thumb {\n  background: var(--border-light);\n  border-radius: 10px;\n}\n\n.prescription-modal::-webkit-scrollbar-thumb:hover {\n  background: var(--primary-color);\n}
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+
+.prescription-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 2px solid #e2e8f0;
+  background-color: #f8fafc;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.prescription-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #1e293b;
+}
+
+.prescription-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  font-size: 1.5rem;
+}
+
+.btn-close:hover {
+  background-color: #e0e7ff;
+  color: #2563eb;
+}
+
+.prescription-document {
+  padding: 2.5rem 2rem;
+  background-color: white;
+  font-size: 0.95rem;
+}
+
+.prescription-modal::-webkit-scrollbar {
+  width: 8px;
+}
+
+.prescription-modal::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 10px;
+}
+
+.prescription-modal::-webkit-scrollbar-thumb {
+  background: #cac9d9;
+  border-radius: 10px;
+}
+
+.prescription-modal::-webkit-scrollbar-thumb:hover {
+  background: #2563eb;
+}
+
+@media (max-width: 768px) {
+  .prescription-modal-overlay {
+    padding: 1rem;
+  }
+
+  .prescription-modal {
+    border-radius: 12px;
+  }
+
+  .prescription-document {
+    padding: 1.5rem 1rem;
+  }
+}

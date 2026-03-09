@@ -19,9 +19,16 @@ import {
   FiDownload,
   FiCheckCircle,
   FiXCircle,
-  FiAlertCircle
+  FiAlertCircle,
+  FiTrash2,
+  FiEdit2,
+  FiBell,
+  FiLock,
+  FiArchive,
+  FiEye,
+  FiEyeOff
 } from 'react-icons/fi';
-import { FaStethoscope, FaCalendarAlt, FaHeartbeat, FaHospital } from 'react-icons/fa';
+import { FaStethoscope, FaCalendarAlt, FaHeartbeat, FaHospital, FaFileUpload } from 'react-icons/fa';
 import PrescriptionView from './PrescriptionView';
 import 'react-calendar/dist/Calendar.css';
 import '../styles/patient.css';
@@ -32,12 +39,19 @@ const navItems = [
   { key: 'appointments', label: 'My Appointments', icon: FiFileText },
   { key: 'feedback', label: 'Feedback', icon: FiCheckCircle },
   { key: 'medicalRecords', label: 'Medical Records', icon: FaStethoscope },
+  { key: 'notifications', label: 'Notifications', icon: FiBell },
+  { key: 'consents', label: 'Consent Management', icon: FiLock },
+  { key: 'auditTrail', label: 'Audit Trail', icon: FiArchive },
   { key: 'calendar', label: 'Calendar', icon: FiCalendar },
   { key: 'profile', label: 'Edit Profile', icon: FiSettings }
 ];
 
+const RECORD_CATEGORIES = ['PRESCRIPTION', 'TEST_REPORT', 'DIAGNOSIS', 'DISCHARGE_SUMMARY', 'VACCINATION', 'OTHER'];
+const NOTIFICATION_TYPES = ['ALL', 'APPOINTMENT_REMINDER', 'PRESCRIPTION_REFILL_REMINDER', 'HEALTH_CHECKUP_REMINDER', 'APPOINTMENT_CONFIRMED', 'REPORT_AVAILABLE'];
+
 export default function PatientDashboard() {
   const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
   const [activeSection, setActiveSection] = useState('dashboard');
   const [profile, setProfile] = useState(null);
   const [appointments, setAppointments] = useState([]);
@@ -57,6 +71,38 @@ export default function PatientDashboard() {
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [avatarTilt, setAvatarTilt] = useState({ x: 0, y: 0 });
+  
+  // Medical Records Upload
+  const [recordFile, setRecordFile] = useState(null);
+  const [recordForm, setRecordForm] = useState({
+    category: 'OTHER',
+    notes: ''
+  });
+  
+  // Medical Records Filtering
+  const [recordFilterCategory, setRecordFilterCategory] = useState('');
+  const [recordFilterStartDate, setRecordFilterStartDate] = useState('');
+  const [recordFilterEndDate, setRecordFilterEndDate] = useState('');
+  const [filteredMedicalRecords, setFilteredMedicalRecords] = useState([]);
+  const [editingRecordId, setEditingRecordId] = useState(null);
+  const [previewRecord, setPreviewRecord] = useState(null);
+  const [previewData, setPreviewData] = useState(null);
+  
+  // Consent Management
+  const [consents, setConsents] = useState([]);
+  const [grantConsentDoctor, setGrantConsentDoctor] = useState('');
+  const [consentReason, setConsentReason] = useState('');
+  
+  // Notifications
+  const [notifications, setNotifications] = useState([]);
+  const [notificationFilter, setNotificationFilter] = useState('ALL');
+  const [unreadCount, setUnreadCount] = useState(0);
+  
+  // Audit Trail
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [selectedRecordForAudit, setSelectedRecordForAudit] = useState('');
+  
+  // Booking & Feedback
   const [bookingForm, setBookingForm] = useState({
     appointmentDate: '',
     timeSlot: '',
@@ -94,6 +140,8 @@ export default function PatientDashboard() {
     fetchMedicalRecords();
     fetchPrescriptions();
     fetchFeedback();
+    fetchConsents();
+    fetchNotifications();
   }, []);
 
   const fetchProfile = async () => {
@@ -127,8 +175,11 @@ export default function PatientDashboard() {
 
   const fetchMedicalRecords = async () => {
     try {
-      const res = await axios.get('/api/patient/medical-records', { headers: authHeader });
-      setMedicalRecords(res.data || []);
+      const userId = user?.id || profile?.userId;
+      if (userId) {
+        const res = await axios.get(`/api/medical-records/patient/${userId}`, { headers: authHeader });
+        setMedicalRecords(res.data || []);
+      }
     } catch (e) {
       console.error('Error fetching medical records:', e);
     }
@@ -151,6 +202,321 @@ export default function PatientDashboard() {
       console.error('Error fetching feedback:', e);
     }
   };
+
+  // ===== MEDICAL RECORDS =====
+  const fetchMedicalRecordsWithFilter = async () => {
+    try {
+      let url = `/api/medical-records/patient/${user?.id || profile?.userId}`;
+      
+      if (recordFilterCategory && recordFilterStartDate && recordFilterEndDate) {
+        url += `/filter?category=${recordFilterCategory}&startDate=${recordFilterStartDate}T00:00:00&endDate=${recordFilterEndDate}T23:59:59`;
+      } else if (recordFilterCategory) {
+        url += `/category/${recordFilterCategory}`;
+      } else if (recordFilterStartDate && recordFilterEndDate) {
+        url += `/date-range?startDate=${recordFilterStartDate}T00:00:00&endDate=${recordFilterEndDate}T23:59:59`;
+      }
+      
+      const res = await axios.get(url, { headers: authHeader });
+      setFilteredMedicalRecords(res.data || []);
+    } catch (e) {
+      console.error('Error filtering medical records:', e);
+      setMessage('Error loading filtered records');
+    }
+  };
+
+  const uploadMedicalRecord = async () => {
+    if (!recordFile || !recordForm.category) {
+      setMessage('Please select a file and category');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formDataObj = new FormData();
+      formDataObj.append('file', recordFile);
+      formDataObj.append('category', recordForm.category);
+      if (recordForm.notes) {
+        formDataObj.append('notes', recordForm.notes);
+      }
+
+      const res = await axios.post(
+        `/api/medical-records/upload`,
+        formDataObj,
+        { headers: { ...authHeader, 'Content-Type': 'multipart/form-data' } }
+      );
+      
+      setMessage('Medical record uploaded successfully');
+      setRecordFile(null);
+      setRecordForm({ category: 'OTHER', notes: '' });
+      fetchMedicalRecords();
+      fetchAuditLogs();
+    } catch (e) {
+      const backendError =
+        e.response?.data?.error ||
+        e.response?.data?.message ||
+        e.response?.data ||
+        e.message;
+      setMessage(backendError || 'Error uploading medical record');
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  const updateMedicalRecord = async (recordId) => {
+    if (!recordFile && !recordForm.notes) {
+      setMessage('Please select a file or add notes');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formDataObj = new FormData();
+      if (recordFile) {
+        formDataObj.append('file', recordFile);
+      }
+      if (recordForm.notes) {
+        formDataObj.append('notes', recordForm.notes);
+      }
+
+      const res = await axios.put(
+        `/api/medical-records/${recordId}`,
+        formDataObj,
+        { headers: { ...authHeader, 'Content-Type': 'multipart/form-data' } }
+      );
+      
+      setMessage('Medical record updated successfully');
+      setRecordFile(null);
+      setRecordForm({ category: 'OTHER', notes: '' });
+      setEditingRecordId(null);
+      fetchMedicalRecords();
+      fetchAuditLogs();
+    } catch (e) {
+      setMessage(e.response?.data?.error || 'Error updating medical record');
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  const deleteMedicalRecord = async (recordId) => {
+    if (!window.confirm('Are you sure you want to delete this record?')) return;
+
+    try {
+      await axios.delete(`/api/medical-records/${recordId}`, { headers: authHeader });
+      setMessage('Medical record deleted successfully');
+      fetchMedicalRecords();
+      fetchAuditLogs();
+    } catch (e) {
+      setMessage(e.response?.data?.error || 'Error deleting medical record');
+      console.error(e);
+    }
+  };
+
+  const downloadMedicalRecord = async (recordId, fileName) => {
+    try {
+      const res = await axios.get(`/api/medical-records/download/${recordId}`, {
+        headers: authHeader,
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      setMessage('Error downloading file');
+      console.error(e);
+    }
+  };
+
+  const previewMedicalRecord = async (record) => {
+    try {
+      const fileType = record.fileName?.split('.').pop()?.toLowerCase();
+      console.log('Previewing file:', record.fileName, 'Type:', fileType);
+      let content = null;
+      let displayType = 'text';
+      let blobUrl = null; // Track blob URLs for cleanup
+
+      if (['txt', 'csv', 'json', 'xml', 'log'].includes(fileType)) {
+        // Get text file content as blob first, then convert to text
+        const res = await axios.get(`/api/medical-records/download/${record.id}?preview=true`, {
+          headers: authHeader,
+          responseType: 'blob'
+        });
+        const text = await res.data.text();
+        content = text;
+        displayType = 'text';
+      } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileType)) {
+        // Get image file as blob
+        const res = await axios.get(`/api/medical-records/download/${record.id}?preview=true`, {
+          headers: authHeader,
+          responseType: 'blob'
+        });
+        blobUrl = URL.createObjectURL(res.data);
+        content = blobUrl;
+        displayType = 'image';
+      } else if (fileType === 'pdf') {
+        // For PDF, get as blob and use blob URL directly
+        const res = await axios.get(`/api/medical-records/download/${record.id}?preview=true`, {
+          headers: authHeader,
+          responseType: 'blob'
+        });
+        blobUrl = URL.createObjectURL(res.data);
+        content = blobUrl;
+        displayType = 'pdf';
+      } else {
+        content = `File type .${fileType} cannot be previewed. Click Download to open this file.`;
+        displayType = 'text';
+      }
+
+      setPreviewRecord(record);
+      setPreviewData({ content, displayType, blobUrl });
+    } catch (e) {
+      console.error('Preview error:', e.response?.status, e.response?.data, e.message);
+      setMessage('Error loading preview: ' + (e.response?.data?.error || e.message));
+    }
+  };
+
+  // ===== CONSENT MANAGEMENT =====
+  const fetchConsents = async () => {
+    try {
+      const res = await axios.get('/api/patient/consents', { headers: authHeader });
+      setConsents(res.data || []);
+    } catch (e) {
+      console.error('Error fetching consents:', e);
+    }
+  };
+
+  const grantDoctorConsent = async () => {
+    if (!grantConsentDoctor) {
+      setMessage('Please select a doctor');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await axios.post(
+        '/api/patient/consents',
+        {
+          doctorId: parseInt(grantConsentDoctor),
+          reason: consentReason || undefined
+        },
+        { headers: authHeader }
+      );
+      
+      setMessage('Doctor access granted successfully');
+      setGrantConsentDoctor('');
+      setConsentReason('');
+      fetchConsents();
+    } catch (e) {
+      setMessage(e.response?.data?.error || 'Error granting consent');
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  const revokeDoctorConsent = async (doctorId) => {
+    if (!window.confirm('Are you sure you want to revoke this doctor\'s access?')) return;
+
+    try {
+      await axios.put(
+        `/api/patient/consents/${doctorId}/revoke`,
+        { reason: 'Revoked by patient' },
+        { headers: authHeader }
+      );
+      
+      setMessage('Doctor access revoked successfully');
+      fetchConsents();
+    } catch (e) {
+      setMessage(e.response?.data?.error || 'Error revoking consent');
+      console.error(e);
+    }
+  };
+
+  // ===== NOTIFICATIONS =====
+  const fetchNotifications = async () => {
+    try {
+      const typeParam = notificationFilter !== 'ALL' ? `?type=${notificationFilter}` : '';
+      const res = await axios.get(`/api/notifications${typeParam}`, { headers: authHeader });
+      
+      if (res.data.notifications) {
+        setNotifications(res.data.notifications);
+      } else {
+        setNotifications(res.data || []);
+      }
+    } catch (e) {
+      console.error('Error fetching notifications:', e);
+    }
+  };
+
+  const getUnreadCount = async () => {
+    try {
+      const res = await axios.get('/api/notifications/unread-count', { headers: authHeader });
+      setUnreadCount(res.data.unreadCount || 0);
+    } catch (e) {
+      console.error('Error fetching unread count:', e);
+    }
+  };
+
+  const markNotificationAsRead = async (notificationId) => {
+    try {
+      await axios.put(
+        `/api/notifications/${notificationId}/mark-read`,
+        {},
+        { headers: authHeader }
+      );
+      getUnreadCount();
+      fetchNotifications();
+    } catch (e) {
+      console.error('Error marking notification as read:', e);
+    }
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    try {
+      await axios.put('/api/notifications/mark-all-read', {}, { headers: authHeader });
+      getUnreadCount();
+      fetchNotifications();
+    } catch (e) {
+      console.error('Error marking all notifications as read:', e);
+    }
+  };
+
+  // ===== AUDIT TRAIL =====
+  const fetchAuditLogs = async () => {
+    try {
+      const userId = user?.id || profile?.userId;
+      const url = selectedRecordForAudit
+        ? `/api/audit-logs/record/${selectedRecordForAudit}`
+        : `/api/audit-logs/patient/${userId}`;
+      
+      const res = await axios.get(url, { headers: authHeader });
+      setAuditLogs(res.data || []);
+    } catch (e) {
+      console.error('Error fetching audit logs:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (notificationFilter) {
+      fetchNotifications();
+    }
+  }, [notificationFilter]);
+
+  useEffect(() => {
+    if (activeSection === 'notifications') {
+      getUnreadCount();
+    }
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (activeSection === 'auditTrail') {
+      fetchAuditLogs();
+    }
+  }, [activeSection, selectedRecordForAudit]);
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -889,56 +1255,412 @@ export default function PatientDashboard() {
 
         {/* Medical Records */}
         {activeSection === 'medicalRecords' && (
-          <div className="medical-records-section">
-            <div className="records-grid">
-              <div className="records-list">
-                <h3>Medical Records</h3>
-                {medicalRecords.length === 0 ? (
-                  <p className="no-data">No medical records available</p>
-                ) : (
-                  medicalRecords.map(record => (
-                    <div key={record.id} className="record-item">
-                      <div className="record-header">
-                        <FiFileText className="record-icon" />
-                        <div>
-                          <h4>{record.recordType}</h4>
-                          <p>{new Date(record.recordDate).toLocaleDateString()}</p>
-                        </div>
-                      </div>
-                      <p className="record-doctor">By: {record.doctorName || 'N/A'}</p>
-                      {record.notes && <p className="record-notes">{record.notes}</p>}
-                      {record.filePath && (
-                        <a href={`/${record.filePath}`} download className="download-link">
-                          <FiDownload /> Download Report
-                        </a>
-                      )}
-                    </div>
-                  ))
-                )}
+          <div className="medical-records-section-enhanced">
+            {/* Upload Section */}
+            <div className="upload-section">
+              <h3><FaFileUpload /> Upload Medical Record</h3>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>File *</label>
+                  <input
+                    type="file"
+                    onChange={(e) => setRecordFile(e.target.files[0])}
+                    accept=".pdf,.doc,.docx,.jpg,.png"
+                  />
+                  {recordFile && <p className="file-name">{recordFile.name}</p>}
+                </div>
+                
+                <div className="form-group">
+                  <label>Category *</label>
+                  <select
+                    value={recordForm.category}
+                    onChange={(e) => setRecordForm({ ...recordForm, category: e.target.value })}
+                  >
+                    {RECORD_CATEGORIES.map(cat => (
+                      <option key={cat} value={cat}>{cat.replace(/_/g, ' ')}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group col-2">
+                  <label>Notes</label>
+                  <textarea
+                    value={recordForm.notes}
+                    onChange={(e) => setRecordForm({ ...recordForm, notes: e.target.value })}
+                    placeholder="Add any notes about this record..."
+                    rows="2"
+                  />
+                </div>
               </div>
 
-              <div className="prescriptions-list">
-                <h3>Prescriptions</h3>
-                {prescriptions.length === 0 ? (
-                  <p className="no-data">No prescriptions available</p>
-                ) : (
-                  prescriptions.map(presc => (
-                    <div key={presc.id} className="prescription-item">
-                      <div className="prescription-header">
-                        <h4>{presc.appointment?.doctor?.fullName}</h4>
-                        <p>{new Date(presc.createdAt).toLocaleDateString()}</p>
-                      </div>
-                      <p className="diagnosis"><strong>Diagnosis:</strong> {presc.diagnosis}</p>
-                      <button
-                        className="btn-secondary small"
-                        onClick={() => setSelectedPrescription(presc)}
-                      >
-                        View Details
-                      </button>
-                    </div>
-                  ))
-                )}
+              <button className="btn-primary" onClick={uploadMedicalRecord} disabled={loading}>
+                {loading ? 'Uploading...' : 'Upload Record'}
+              </button>
+            </div>
+
+            {/* Filter Section */}
+            <div className="filter-section">
+              <h3>Filter Records</h3>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Category</label>
+                  <select
+                    value={recordFilterCategory}
+                    onChange={(e) => setRecordFilterCategory(e.target.value)}
+                  >
+                    <option value="">All Categories</option>
+                    {RECORD_CATEGORIES.map(cat => (
+                      <option key={cat} value={cat}>{cat.replace(/_/g, ' ')}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>From Date</label>
+                  <input
+                    type="date"
+                    value={recordFilterStartDate}
+                    onChange={(e) => setRecordFilterStartDate(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>To Date</label>
+                  <input
+                    type="date"
+                    value={recordFilterEndDate}
+                    onChange={(e) => setRecordFilterEndDate(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <button className="btn-secondary" onClick={fetchMedicalRecordsWithFilter}>
+                    <FiSearch /> Apply Filter
+                  </button>
+                </div>
               </div>
+            </div>
+
+            {/* Records List */}
+            <div className="records-list-enhanced">
+              <h3>Your Medical Records ({filteredMedicalRecords.length || medicalRecords.length})</h3>
+              {(filteredMedicalRecords.length > 0 ? filteredMedicalRecords : medicalRecords).length === 0 ? (
+                <p className="no-data">No medical records available</p>
+              ) : (
+                <div className="records-table">
+                  <div className="records-header">
+                    <div className="col-name">Document</div>
+                    <div className="col-category">Category</div>
+                    <div className="col-date">Date</div>
+                    <div className="col-notes">Notes</div>
+                    <div className="col-actions">Actions</div>
+                  </div>
+                  {(filteredMedicalRecords.length > 0 ? filteredMedicalRecords : medicalRecords).map(record => (
+                    <motion.div key={record.id} className="record-row" whileHover={{ scale: 1.01 }}>
+                      <div className="col-name">
+                        <FiFileText /> {record.fileName || 'Record'}
+                      </div>
+                      <div className="col-category">
+                        <span className="badge-category">{record.category?.replace(/_/g, ' ')}</span>
+                      </div>
+                      <div className="col-date">
+                        {new Date(record.uploadDate || record.createdAt).toLocaleDateString()}
+                      </div>
+                      <div className="col-notes">
+                        {record.notes ? <span title={record.notes}>{record.notes.substring(0, 30)}...</span> : '—'}
+                      </div>
+                      <div className="col-actions">
+                        {record.fileUrl && (
+                          <button 
+                            onClick={() => previewMedicalRecord(record)}
+                            className="action-btn preview" 
+                            title="Preview"
+                          >
+                            <FiEye /> Preview
+                          </button>
+                        )}
+                        {record.fileUrl && (
+                          <button 
+                            onClick={() => downloadMedicalRecord(record.id, record.fileName)}
+                            className="action-btn download" 
+                            title="Download"
+                          >
+                            <FiDownload /> Download
+                          </button>
+                        )}
+                        <button
+                          className="action-btn edit"
+                          onClick={() => setEditingRecordId(record.id)}
+                          title="Edit"
+                        >
+                          <FiEdit2 /> Edit
+                        </button>
+                        <button
+                          className="action-btn delete"
+                          onClick={() => deleteMedicalRecord(record.id)}
+                          title="Delete"
+                        >
+                          <FiTrash2 /> Delete
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Consent Management */}
+        {activeSection === 'consents' && (
+          <div className="consents-section">
+            <h2><FiLock /> Doctor Access Management</h2>
+            
+            <div className="grant-consent-card">
+              <h3>Grant Doctor Access</h3>
+              <p className="section-desc">Allow a doctor to view your medical records</p>
+              <div className="form-grid">
+                <div className="form-group col-2">
+                  <label>Select Doctor *</label>
+                  <select
+                    value={grantConsentDoctor}
+                    onChange={(e) => setGrantConsentDoctor(e.target.value)}
+                  >
+                    <option value="">Choose a doctor...</option>
+                    {doctors.map(doc => (
+                      <option key={doc.id} value={doc.id}>
+                        Dr. {doc.fullName} - {doc.specialization}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group col-2">
+                  <label>Reason (Optional)</label>
+                  <input
+                    type="text"
+                    value={consentReason}
+                    onChange={(e) => setConsentReason(e.target.value)}
+                    placeholder="e.g., Second opinion"
+                  />
+                </div>
+
+                <button
+                  className="btn-primary col-2"
+                  onClick={grantDoctorConsent}
+                  disabled={loading}
+                >
+                  {loading ? 'Granting...' : 'Grant Access'}
+                </button>
+              </div>
+            </div>
+
+            {/* Current Consents */}
+            <div className="consents-list">
+              <h3>Current Access Permissions</h3>
+              {consents.length === 0 ? (
+                <p className="no-data">No doctor has been granted access yet</p>
+              ) : (
+                <div className="consents-grid">
+                  {consents.map(consent => {
+                    const doctor = doctors.find(d => d.id === consent.doctorId);
+                    const isActive = consent.granted && !consent.revokedAt;
+                    
+                    return (
+                      <motion.div key={consent.id} className="consent-card" whileHover={{ scale: 1.02 }}>
+                        <div className="consent-header">
+                          <div className="doctor-info">
+                            <h4>Dr. {doctor?.fullName || 'Unknown'}</h4>
+                            <p className="specialization">{doctor?.specialization}</p>
+                          </div>
+                          <span className={`status-badge ${isActive ? 'active' : 'revoked'}`}>
+                            {isActive ? <FiCheckCircle /> : <FiXCircle />}
+                            {isActive ? 'Active' : 'Revoked'}
+                          </span>
+                        </div>
+
+                        {consent.reason && (
+                          <div className="consent-reason">
+                            <strong>Reason:</strong> {consent.reason}
+                          </div>
+                        )}
+
+                        <div className="consent-timestamps">
+                          <small>
+                            {isActive
+                              ? `Access granted on ${new Date(consent.grantedAt).toLocaleDateString()}`
+                              : `Access revoked on ${new Date(consent.revokedAt).toLocaleDateString()}`}
+                          </small>
+                        </div>
+
+                        {isActive && (
+                          <button
+                            className="btn-danger full-width"
+                            onClick={() => revokeDoctorConsent(consent.doctorId)}
+                          >
+                            Revoke Access
+                          </button>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Notifications Panel */}
+        {activeSection === 'notifications' && (
+          <div className="notifications-section">
+            <h2><FiBell /> Notifications {unreadCount > 0 && <span className="unread-badge">{unreadCount}</span>}</h2>
+
+            <div className="notifications-controls">
+              <div className="filter-group">
+                <label>Filter by Type:</label>
+                <select
+                  value={notificationFilter}
+                  onChange={(e) => setNotificationFilter(e.target.value)}
+                  className="filter-select"
+                >
+                  {NOTIFICATION_TYPES.map(type => (
+                    <option key={type} value={type}>
+                      {type.replace(/_/g, ' ')}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {unreadCount > 0 && (
+                <button className="btn-secondary" onClick={markAllNotificationsAsRead}>
+                  Mark All as Read
+                </button>
+              )}
+            </div>
+
+            <div className="notifications-list">
+              {notifications.length === 0 ? (
+                <div className="no-data">
+                  <FiBell size={48} />
+                  <p>No notifications</p>
+                </div>
+              ) : (
+                notifications.map(notif => (
+                  <motion.div
+                    key={notif.id}
+                    className={`notification-item ${notif.isRead ? 'read' : 'unread'}`}
+                    whileHover={{ scale: 1.01 }}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <div className="notification-indicator">
+                      {!notif.isRead && <span className="unread-dot"></span>}
+                    </div>
+
+                    <div className="notification-content">
+                      <div className="notification-header">
+                        <h4 className="notification-type">
+                          {notif.type?.replace(/_/g, ' ')}
+                        </h4>
+                        <small className="notification-time">
+                          {new Date(notif.createdAt).toLocaleString()}
+                        </small>
+                      </div>
+                      <p className="notification-message">{notif.message}</p>
+                    </div>
+
+                    {!notif.isRead && (
+                      <button
+                        className="mark-read-btn"
+                        onClick={() => markNotificationAsRead(notif.id)}
+                        title="Mark as read"
+                      >
+                        <FiCheckCircle />
+                      </button>
+                    )}
+                  </motion.div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Audit Trail */}
+        {activeSection === 'auditTrail' && (
+          <div className="audit-section">
+            <h2><FiArchive /> Audit Trail - Record History</h2>
+
+            <div className="audit-controls">
+              <div className="form-group">
+                <label>Filter by Record (Optional):</label>
+                <select
+                  value={selectedRecordForAudit}
+                  onChange={(e) => {
+                    setSelectedRecordForAudit(e.target.value);
+                    if (e.target.value) {
+                      // Will trigger via useEffect
+                    }
+                  }}
+                >
+                  <option value="">All Records</option>
+                  {medicalRecords.map(record => (
+                    <option key={record.id} value={record.id}>
+                      {record.fileName} - {new Date(record.uploadDate || record.createdAt).toLocaleDateString()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button className="btn-secondary" onClick={fetchAuditLogs}>
+                <FiSearch /> Refresh Logs
+              </button>
+            </div>
+
+            <div className="audit-timeline">
+              {auditLogs.length === 0 ? (
+                <div className="no-data">
+                  <p>No audit logs available</p>
+                </div>
+              ) : (
+                <div className="timeline">
+                  {auditLogs.map((log, idx) => (
+                    <motion.div
+                      key={log.id}
+                      className="timeline-item"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                    >
+                      <div className="timeline-marker">
+                        <span className={`action-badge action-${log.actionType?.toLowerCase()}`}>
+                          {log.actionType?.replace(/_/g, ' ')}
+                        </span>
+                      </div>
+
+                      <div className="timeline-content">
+                        <div className="timeline-header">
+                          <h4>
+                            {log.actionType?.replace(/_/g, ' ')} by {log.role}
+                          </h4>
+                          <small className="timestamp">
+                            {new Date(log.timestamp).toLocaleString()}
+                          </small>
+                        </div>
+
+                        {log.details && (
+                          <p className="timeline-details">{log.details}</p>
+                        )}
+
+                        {log.recordId && (
+                          <span className="record-ref">
+                            Record ID: {log.recordId}
+                          </span>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1137,6 +1859,94 @@ export default function PatientDashboard() {
           prescription={selectedPrescription}
           onClose={() => setSelectedPrescription(null)}
         />
+      )}
+
+      {/* Preview Modal */}
+      {previewRecord && previewData && (
+        <motion.div 
+          className="modal-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => {
+            if (previewData.blobUrl) {
+              URL.revokeObjectURL(previewData.blobUrl);
+            }
+            setPreviewRecord(null);
+            setPreviewData(null);
+          }}
+        >
+          <motion.div 
+            className="modal-content preview-modal"
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h2>Preview: {previewRecord.fileName}</h2>
+              <button 
+                className="close-btn"
+                onClick={() => {
+                  if (previewData.blobUrl) {
+                    URL.revokeObjectURL(previewData.blobUrl);
+                  }
+                  setPreviewRecord(null);
+                  setPreviewData(null);
+                }}
+              >
+                <FiX />
+              </button>
+            </div>
+
+            <div className="modal-body preview-body">
+              {previewData.displayType === 'text' && (
+                <div className="preview-text">
+                  <pre>{previewData.content}</pre>
+                </div>
+              )}
+
+              {previewData.displayType === 'image' && (
+                <div className="preview-image">
+                  <img src={previewData.content} alt="Preview" />
+                </div>
+              )}
+
+              {previewData.displayType === 'pdf' && (
+                <div className="preview-pdf">
+                  <iframe 
+                    src={previewData.content} 
+                    type="application/pdf"
+                    width="100%"
+                    height="600px"
+                    style={{ border: 'none', borderRadius: '8px' }}
+                    title="PDF Preview"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button 
+                className="btn-secondary"
+                onClick={() => downloadMedicalRecord(previewRecord.id, previewRecord.fileName)}
+              >
+                <FiDownload /> Download
+              </button>
+              <button 
+                className="btn-primary"
+                onClick={() => {
+                  if (previewData.blobUrl) {
+                    URL.revokeObjectURL(previewData.blobUrl);
+                  }
+                  setPreviewRecord(null);
+                  setPreviewData(null);
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
       )}
     </motion.div>
   );

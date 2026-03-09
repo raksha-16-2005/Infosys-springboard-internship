@@ -11,7 +11,10 @@ import {
   FiLogOut,
   FiCheckCircle,
   FiClock,
-  FiXCircle
+  FiXCircle,
+  FiDownload,
+  FiAlertCircle,
+  FiLock
 } from 'react-icons/fi';
 import { FaStethoscope, FaRobot, FaCalendarAlt, FaHeartbeat } from 'react-icons/fa';
 import PrescriptionView from './PrescriptionView';
@@ -36,6 +39,7 @@ export default function DoctorDashboard() {
   const [patients, setPatients] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [patientRecords, setPatientRecords] = useState([]);
+  const [patientConsents, setPatientConsents] = useState({}); // Track consent status per patient
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -50,10 +54,12 @@ export default function DoctorDashboard() {
   const [avatarTilt, setAvatarTilt] = useState({ x: 0, y: 0 });
   const [recordNotes, setRecordNotes] = useState('');
   const [recordFile, setRecordFile] = useState(null);
+  const [recordCategory, setRecordCategory] = useState('DIAGNOSIS'); // For new record uploads
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [selectedPatientAppointmentId, setSelectedPatientAppointmentId] = useState('');
   const [selectedPrescription, setSelectedPrescription] = useState(null);
   const [showPrescriptionForm, setShowPrescriptionForm] = useState(false);
+  const [accessDeniedPatient, setAccessDeniedPatient] = useState(null); // Track access denied errors
   const [prescriptionForm, setPrescriptionForm] = useState({
     diagnosis: '',
     medicinesJson: '[]',
@@ -91,8 +97,10 @@ export default function DoctorDashboard() {
   useEffect(() => {
     if (selectedPatient?.userId) {
       fetchPatientRecords(selectedPatient.userId);
+      fetchPatientConsent(selectedPatient.userId);
       setRecordNotes('');
       setRecordFile(null);
+      setRecordCategory('DIAGNOSIS');
       setSelectedPatientAppointmentId('');
     }
   }, [selectedPatient]);
@@ -167,11 +175,39 @@ export default function DoctorDashboard() {
   };
 
   const fetchPatientRecords = async (patientUserId) => {
+    setAccessDeniedPatient(null);
     try {
       const res = await axios.get(`/api/doctor/patients/${patientUserId}/records`, { headers: authHeader });
       setPatientRecords(res.data || []);
     } catch (err) {
-      console.error('Record fetch error', err);
+      if (err.response?.status === 403 && err.response?.data?.message?.includes('consent')) {
+        // Handle denied access gracefully - show user-friendly message
+        setAccessDeniedPatient(patientUserId);
+        setPatientRecords([]);
+        setMessage('No active consent from this patient yet');
+      } else {
+        console.error('Record fetch error', err);
+        setPatientRecords([]);
+      }
+    }
+  };
+
+  // Fetch consent status for a specific patient
+  const fetchPatientConsent = async (patientUserId) => {
+    try {
+      const res = await axios.get(`/api/doctor/patient/${patientUserId}/consent`, { headers: authHeader });
+      setPatientConsents((prev) => ({
+        ...prev,
+        [patientUserId]: res.data // { granted: boolean, grantedAt, revokedAt, ... }
+      }));
+      return res.data;
+    } catch (err) {
+      // If endpoint doesn't exist, try status from patient fetch
+      setPatientConsents((prev) => ({
+        ...prev,
+        [patientUserId]: { granted: false, reason: 'No consent' }
+      }));
+      return null;
     }
   };
 
@@ -270,20 +306,64 @@ export default function DoctorDashboard() {
 
   const addMedicalRecord = async () => {
     if (!selectedPatient) return;
+    
+    // Check if doctor has consent before uploading
+    const consent = patientConsents[selectedPatient.userId];
+    if (!consent?.granted) {
+      setMessage('Cannot add records: Patient has not granted consent');
+      return;
+    }
+
+    if (!recordFile) {
+      setMessage('Please select a file to upload');
+      return;
+    }
+
     const data = new FormData();
+    data.append('category', recordCategory);
     if (recordNotes) data.append('notes', recordNotes);
-    if (recordFile) data.append('file', recordFile);
+    data.append('file', recordFile);
+    
+    setLoading(true);
     try {
       const res = await axios.post(
-        `/api/doctor/patients/${selectedPatient.userId}/records`,
+        `/api/medical-records/upload?patientId=${selectedPatient.userId}`,
         data,
         { headers: { ...authHeader, 'Content-Type': 'multipart/form-data' } }
       );
-      setPatientRecords((prev) => [res.data, ...prev]);
+      setPatientRecords((prev) => [res.data.data, ...prev]);
       setRecordNotes('');
       setRecordFile(null);
+      setRecordCategory('DIAGNOSIS');
+      setMessage('Medical record uploaded successfully!');
     } catch (err) {
-      setMessage('Failed to upload medical note');
+      const errorMsg = err.response?.data?.message || 'Failed to upload medical record';
+      setMessage(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Download medical record file
+  const downloadRecord = async (record) => {
+    try {
+      const response = await axios.get(
+        `/api/medical-records/${record.id}/download`,
+        { 
+          headers: authHeader,
+          responseType: 'blob'
+        }
+      );
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', record.fileName || 'record.pdf');
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+    } catch (err) {
+      setMessage('Failed to download record');
+      console.error('Download error', err);
     }
   };
 
@@ -634,94 +714,273 @@ export default function DoctorDashboard() {
             <div className="doctor-grid doctor-grid-2">
               <div className="doctor-card">
                 <h2>Patients</h2>
+                <p className="muted" style={{ fontSize: '0.9em', marginBottom: '12px' }}>
+                  Click "View" to see patient records and consent status
+                </p>
                 <div className="table-responsive">
                   <table className="doctor-table">
                     <thead>
                       <tr>
                         <th>Name</th>
                         <th>Age</th>
-                        <th>Phone</th>
+                        <th>Consent Status</th>
                         <th>Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {patients.map((patient) => (
-                        <tr key={patient.userId}>
-                          <td>{patient.fullName}</td>
-                          <td>{patient.age || '-'}</td>
-                          <td>{patient.phone || '-'}</td>
-                          <td>
-                            <button className="ghost" onClick={() => setSelectedPatient(patient)}>
-                              View
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {patients.map((patient) => {
+                        const consent = patientConsents[patient.userId];
+                        const hasConsent = consent?.granted;
+                        
+                        return (
+                          <tr key={patient.userId}>
+                            <td>{patient.fullName}</td>
+                            <td>{patient.age || '-'}</td>
+                            <td>
+                              {hasConsent ? (
+                                <span style={{ color: '#10b981', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <FiCheckCircle size={14} /> Active
+                                </span>
+                              ) : (
+                                <span style={{ color: '#ef4444', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <FiLock size={14} /> No Consent
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              <button className="ghost" onClick={() => setSelectedPatient(patient)}>
+                                View
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               </div>
 
               <div className="doctor-card">
-                <h2>Patient Details</h2>
+                <h2>Patient Details & Records</h2>
                 {selectedPatient ? (
                   <div className="doctor-note-list">
-                    <div>
-                      <strong>{selectedPatient.fullName}</strong>
+                    {/* Patient Header with Consent Status */}
+                    <div style={{ paddingBottom: '12px', borderBottom: '1px solid #e5e7eb' }}>
+                      <strong style={{ fontSize: '1.1em' }}>{selectedPatient.fullName}</strong>
                       <p className="muted">{selectedPatient.email}</p>
-                      <p>Medical History: {selectedPatient.medicalHistory || 'Not provided'}</p>
+                      <p style={{ fontSize: '0.9em', marginTop: '8px' }}>
+                        Medical History: {selectedPatient.medicalHistory || 'Not provided'}
+                      </p>
+                      
+                      {/* Consent Status Badge */}
+                      <div style={{ marginTop: '8px' }}>
+                        {patientConsents[selectedPatient.userId]?.granted ? (
+                          <span style={{ 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: '6px',
+                            backgroundColor: '#dcfce7', 
+                            color: '#166534', 
+                            padding: '4px 8px', 
+                            borderRadius: '4px',
+                            fontSize: '0.85em',
+                            fontWeight: '500'
+                          }}>
+                            <FiCheckCircle size={14} /> Consent Active
+                          </span>
+                        ) : (
+                          <span style={{ 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: '6px',
+                            backgroundColor: '#fee2e2', 
+                            color: '#991b1b', 
+                            padding: '4px 8px', 
+                            borderRadius: '4px',
+                            fontSize: '0.85em',
+                            fontWeight: '500'
+                          }}>
+                            <FiAlertCircle size={14} /> No Active Consent
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <h4>Medical Notes</h4>
-                      {patientRecords.map((record) => (
-                        <div key={record.id} className="doctor-note-item">
-                          <strong>{record.doctorName || 'Doctor'}</strong>
-                          <p>{record.content || 'File uploaded'}</p>
-                          {record.filename && <p>File: {record.filename}</p>}
+
+                    {/* Medical Records Section */}
+                    <div style={{ marginTop: '16px', paddingBottom: '12px', borderBottom: '1px solid #e5e7eb' }}>
+                      <h4 style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <FiFileText size={16} /> Medical Records
+                      </h4>
+                      
+                      {accessDeniedPatient === selectedPatient.userId ? (
+                        <div style={{ 
+                          backgroundColor: '#fef2f2', 
+                          border: '1px solid #fecaca',
+                          borderRadius: '6px',
+                          padding: '12px',
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '8px',
+                          marginBottom: '12px'
+                        }}>
+                          <FiAlertCircle size={18} style={{ color: '#dc2626', marginTop: '2px', flexShrink: 0 }} />
+                          <div>
+                            <p style={{ fontWeight: '500', color: '#991b1b', margin: '0 0 4px 0' }}>
+                              Access Denied
+                            </p>
+                            <p style={{ fontSize: '0.9em', color: '#7f1d1d', margin: '0' }}>
+                              This patient has not granted you consent to view their medical records yet.
+                              They can grant access from their account settings.
+                            </p>
+                          </div>
                         </div>
-                      ))}
+                      ) : patientRecords.length === 0 ? (
+                        <p className="muted" style={{ fontSize: '0.9em' }}>No records available yet.</p>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {patientRecords.map((record) => (
+                            <div key={record.id} style={{
+                              backgroundColor: '#f9fafb',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
+                              padding: '10px',
+                              fontSize: '0.9em'
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '6px' }}>
+                                <div>
+                                  <strong>{record.fileName || 'Record'}</strong>
+                                  {record.category && (
+                                    <span style={{
+                                      display: 'inline-block',
+                                      marginLeft: '8px',
+                                      backgroundColor: '#dbeafe',
+                                      color: '#075985',
+                                      padding: '2px 6px',
+                                      borderRadius: '3px',
+                                      fontSize: '0.8em',
+                                      fontWeight: '500'
+                                    }}>
+                                      {record.category}
+                                    </span>
+                                  )}
+                                </div>
+                                <button 
+                                  onClick={() => downloadRecord(record)}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '4px 8px',
+                                    backgroundColor: '#f0f9ff',
+                                    border: '1px solid #bfdbfe',
+                                    color: '#0369a1',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.8em',
+                                    fontWeight: '500'
+                                  }}
+                                  title="Download record"
+                                >
+                                  <FiDownload size={12} /> Download
+                                </button>
+                              </div>
+                              {record.notes && (
+                                <p style={{ color: '#6b7280', margin: '6px 0 0 0' }}>
+                                  {record.notes}
+                                </p>
+                              )}
+                              <p style={{ fontSize: '0.8em', color: '#9ca3af', margin: '4px 0 0 0' }}>
+                                Uploaded: {record.uploadDate ? new Date(record.uploadDate).toLocaleDateString() : '-'}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <h4>Add Diagnosis / Notes</h4>
-                      <textarea
-                        className="form-textarea"
-                        value={recordNotes}
-                        onChange={(e) => setRecordNotes(e.target.value)}
-                        placeholder="Add diagnosis or medical notes"
-                      />
-                      <input type="file" onChange={(e) => setRecordFile(e.target.files?.[0])} />
-                      <button className="primary" onClick={addMedicalRecord}>Save Notes</button>
-                    </div>
-                    <div>
-                      <h4>Add Prescription</h4>
-                      <select
-                        className="form-select"
-                        value={selectedPatientAppointmentId}
-                        onChange={(e) => setSelectedPatientAppointmentId(e.target.value)}
-                      >
-                        <option value="">Select appointment</option>
-                        {patientAppointments.map((apt) => (
-                          <option key={apt.id} value={apt.id}>
-                            {formatDate(apt.appointmentDate)} ({apt.status})
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        className="primary"
-                        onClick={() => {
-                          const apt = patientAppointments.find((item) => String(item.id) === selectedPatientAppointmentId);
-                          if (apt) {
-                            setSelectedAppointment(apt);
-                            setShowPrescriptionForm(true);
-                          }
-                        }}
-                      >
-                        Add Prescription
-                      </button>
-                    </div>
+
+                    {/* Add Medical Record Section */}
+                    {patientConsents[selectedPatient.userId]?.granted && !accessDeniedPatient && (
+                      <div style={{ marginTop: '16px', paddingBottom: '12px', borderBottom: '1px solid #e5e7eb' }}>
+                        <h4 style={{ marginBottom: '12px' }}>Add Medical Record</h4>
+                        <label style={{ display: 'block', marginBottom: '8px' }}>
+                          <span style={{ fontWeight: '500', fontSize: '0.9em' }}>Record Category</span>
+                          <select
+                            className="form-select"
+                            value={recordCategory}
+                            onChange={(e) => setRecordCategory(e.target.value)}
+                            style={{ marginTop: '4px', padding: '6px', borderRadius: '4px', border: '1px solid #d1d5db' }}
+                          >
+                            <option value="PRESCRIPTION">Prescription</option>
+                            <option value="TEST_REPORT">Test Report</option>
+                            <option value="DIAGNOSIS">Diagnosis</option>
+                            <option value="DISCHARGE_SUMMARY">Discharge Summary</option>
+                            <option value="VACCINATION">Vaccination</option>
+                            <option value="OTHER">Other</option>
+                          </select>
+                        </label>
+                        <label style={{ display: 'block', marginBottom: '8px' }}>
+                          <span style={{ fontWeight: '500', fontSize: '0.9em' }}>Notes (Optional)</span>
+                          <textarea
+                            className="form-textarea"
+                            value={recordNotes}
+                            onChange={(e) => setRecordNotes(e.target.value)}
+                            placeholder="Add diagnosis, notes, or observations"
+                            style={{ marginTop: '4px', padding: '6px', borderRadius: '4px', border: '1px solid #d1d5db', minHeight: '60px' }}
+                          />
+                        </label>
+                        <label style={{ display: 'block', marginBottom: '8px' }}>
+                          <span style={{ fontWeight: '500', fontSize: '0.9em' }}>Select File</span>
+                          <input 
+                            type="file" 
+                            onChange={(e) => setRecordFile(e.target.files?.[0])}
+                            style={{ marginTop: '4px', padding: '6px', borderRadius: '4px', border: '1px solid #d1d5db' }}
+                          />
+                        </label>
+                        <button 
+                          className="primary" 
+                          onClick={addMedicalRecord}
+                          disabled={loading || !recordFile}
+                          style={{ opacity: loading || !recordFile ? 0.6 : 1 }}
+                        >
+                          {loading ? 'Uploading...' : 'Upload Record'}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Add Prescription Section */}
+                    {patientConsents[selectedPatient.userId]?.granted && !accessDeniedPatient && (
+                      <div style={{ marginTop: '16px' }}>
+                        <h4 style={{ marginBottom: '12px' }}>Add Prescription</h4>
+                        <select
+                          className="form-select"
+                          value={selectedPatientAppointmentId}
+                          onChange={(e) => setSelectedPatientAppointmentId(e.target.value)}
+                          style={{ marginBottom: '8px', padding: '6px', borderRadius: '4px', border: '1px solid #d1d5db' }}
+                        >
+                          <option value="">Select appointment</option>
+                          {patientAppointments.map((apt) => (
+                            <option key={apt.id} value={apt.id}>
+                              {formatDate(apt.appointmentDate)} ({apt.status})
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          className="primary"
+                          onClick={() => {
+                            const apt = patientAppointments.find((item) => String(item.id) === selectedPatientAppointmentId);
+                            if (apt) {
+                              setSelectedAppointment(apt);
+                              setShowPrescriptionForm(true);
+                            }
+                          }}
+                        >
+                          Add Prescription
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <p className="muted">Select a patient to view details.</p>
+                  <p className="muted">Select a patient from the list to view their details and records.</p>
                 )}
               </div>
             </div>

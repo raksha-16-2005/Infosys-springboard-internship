@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "medical_record")
 public class MedicalRecord {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -21,5 +22,5 @@ public class MedicalRecord {
     public String getContent(){return content;} public void setContent(String c){this.content=c;}
     public String getFilePath(){return filePath;} public void setFilePath(String p){this.filePath=p;}
     public String getDoctorName(){return doctorName;} public void setDoctorName(String d){this.doctorName=d;}
-    public LocalDateTime getUploadedAt(){return uploadedAt;}
+    public LocalDateTime getUploadedAt(){return uploadedAt;} public void setUploadedAt(LocalDateTime u){this.uploadedAt=u;}
 }
