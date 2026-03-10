@@ -1,0 +1,3 @@
+Patient: Pranesh Sekar
+Prescription: Telmisartan 40mg once daily
+Doctor: Dr. Pranesh

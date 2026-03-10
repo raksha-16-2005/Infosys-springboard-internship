@@ -9,6 +9,7 @@ import com.example.demo.model.User;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.security.JwtUtils;
 import com.example.demo.service.EmailService;
+import com.example.demo.service.NotificationService;
 import com.example.demo.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +46,9 @@ public class AuthController {
     @Autowired
     EmailService emailService;
 
+    @Autowired
+    NotificationService notificationService;
+
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest) {
 
@@ -74,6 +78,7 @@ public class AuthController {
         }
 
         User user = userRepository.findByUsername(userDetails.getUsername()).orElse(null);
+        notifyAdminsOnLogin(user);
         Long userId = user != null ? user.getId() : null;
         String displayName = user != null ? user.getFullName() : null;
         String email = user != null ? user.getEmail() : null;
@@ -147,6 +152,7 @@ public class AuthController {
         user.setOtpCode(null);
         user.setOtpExpiry(null);
         userRepository.save(user);
+        notifyAdminsOnLogin(user);
 
         String jwt = jwtUtils.generateTokenFromUsername(user.getUsername());
         String role = user.getRole();
@@ -160,5 +166,35 @@ public class AuthController {
             user.getEmail(),
             user.getProfileImagePath()
         ));
+    }
+
+    private void notifyAdminsOnLogin(User loggedInUser) {
+        if (loggedInUser == null || loggedInUser.getRole() == null) {
+            return;
+        }
+
+        String role = loggedInUser.getRole().toUpperCase();
+        if (role.endsWith("ADMIN")) {
+            return;
+        }
+
+        String actorName = loggedInUser.getFullName() != null && !loggedInUser.getFullName().isBlank()
+                ? loggedInUser.getFullName()
+                : loggedInUser.getUsername();
+        String message = role + " login: " + actorName + " (" + loggedInUser.getEmail() + ")";
+
+        for (User user : userRepository.findAll()) {
+            String userRole = user.getRole() != null ? user.getRole().toUpperCase() : "";
+            if (userRole.endsWith("ADMIN")) {
+                try {
+                    notificationService.createNotification(
+                            user.getId(),
+                            com.example.demo.model.Notification.NotificationType.SYSTEM_NOTIFICATION,
+                            message
+                    );
+                } catch (Exception ignored) {
+                }
+            }
+        }
     }
 }

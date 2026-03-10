@@ -4,6 +4,7 @@ import com.example.demo.dto.*;
 import com.example.demo.model.User;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.DoctorService;
+import com.example.demo.service.NotificationService;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -31,10 +32,12 @@ public class DoctorController {
 
     private final DoctorService doctorService;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
-    public DoctorController(DoctorService doctorService, UserRepository userRepository) {
+    public DoctorController(DoctorService doctorService, UserRepository userRepository, NotificationService notificationService) {
         this.doctorService = doctorService;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     private User getAuthenticatedUser() {
@@ -229,6 +232,37 @@ public class DoctorController {
         User user = getAuthenticatedUser();
         if (user == null) return ResponseEntity.status(401).body("Unauthorized");
         return ResponseEntity.ok(doctorService.getPatients(user));
+    }
+
+    @PostMapping("/patients/{patientUserId}/request-records")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public ResponseEntity<?> requestPatientMedicalRecords(@PathVariable Long patientUserId) {
+        User doctorUser = getAuthenticatedUser();
+        if (doctorUser == null) return ResponseEntity.status(401).body("Unauthorized");
+
+        User patientUser = userRepository.findById(patientUserId).orElse(null);
+        if (patientUser == null) {
+            return ResponseEntity.badRequest().body("Patient not found");
+        }
+
+        boolean isDoctorPatient = doctorService.getPatients(doctorUser).stream()
+                .anyMatch(p -> patientUserId.equals(p.getUserId()));
+        if (!isDoctorPatient) {
+            return ResponseEntity.status(403).body("Access denied: You can request records only for your own patients");
+        }
+
+        String doctorName = (doctorUser.getFullName() != null && !doctorUser.getFullName().isBlank())
+                ? doctorUser.getFullName()
+                : doctorUser.getUsername();
+        String message = "Dr. " + doctorName + " has requested you to share medical records and grant access consent.";
+
+        notificationService.createNotification(
+                patientUserId,
+                com.example.demo.model.Notification.NotificationType.DOCTOR_MESSAGE,
+                message
+        );
+
+        return ResponseEntity.ok(Map.of("message", "Medical record request notification sent to patient"));
     }
 
     @GetMapping("/feedback")

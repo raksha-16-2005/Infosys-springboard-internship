@@ -30,6 +30,13 @@ const navItems = [
   { key: 'profile', label: 'Edit Profile', icon: FiSettings }
 ];
 
+const DOCTOR_RECORD_FILTERS = [
+  { key: 'ALL', label: 'All' },
+  { key: 'PRESCRIPTION', label: 'Prescription' },
+  { key: 'TEST_REPORT', label: 'Reports' },
+  { key: 'DIAGNOSIS', label: 'Diagnosis' }
+];
+
 export default function DoctorDashboard() {
   const token = localStorage.getItem('token');
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -39,6 +46,7 @@ export default function DoctorDashboard() {
   const [patients, setPatients] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [patientRecords, setPatientRecords] = useState([]);
+  const [recordViewCategory, setRecordViewCategory] = useState('ALL');
   const [patientConsents, setPatientConsents] = useState({}); // Track consent status per patient
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [message, setMessage] = useState('');
@@ -95,34 +103,47 @@ export default function DoctorDashboard() {
   }, []);
 
   useEffect(() => {
+    return () => {
+      if (profilePreview?.startsWith('blob:')) {
+        URL.revokeObjectURL(profilePreview);
+      }
+    };
+  }, [profilePreview]);
+
+  useEffect(() => {
     if (selectedPatient?.userId) {
       fetchPatientRecords(selectedPatient.userId);
       fetchPatientConsent(selectedPatient.userId);
       setRecordNotes('');
       setRecordFile(null);
       setRecordCategory('DIAGNOSIS');
+      setRecordViewCategory('ALL');
       setSelectedPatientAppointmentId('');
     }
   }, [selectedPatient]);
 
-  const isProfileComplete = useMemo(() => {
-    if (!profile) return false;
-    return Boolean(
-      profile.fullName &&
-      profile.qualification &&
-      profile.specialization &&
-      profile.experienceYears &&
-      profile.consultationFee &&
-      profile.availableSlots &&
-      profile.bio
-    );
-  }, [profile]);
-
-  useEffect(() => {
-    if (!isProfileComplete) {
-      setActiveSection('profile');
+  const loadDoctorProfilePreview = async () => {
+    try {
+      const imageRes = await axios.get('/api/doctor/profile/image', {
+        headers: authHeader,
+        responseType: 'blob'
+      });
+      const blob = imageRes.data;
+      if (!blob || blob.size === 0) {
+        setProfilePreview('');
+        return;
+      }
+      const imageUrl = URL.createObjectURL(blob);
+      setProfilePreview((prev) => {
+        if (prev?.startsWith('blob:')) {
+          URL.revokeObjectURL(prev);
+        }
+        return imageUrl;
+      });
+    } catch (err) {
+      setProfilePreview('');
     }
-  }, [isProfileComplete]);
+  };
 
   const fetchProfile = async () => {
     try {
@@ -140,7 +161,9 @@ export default function DoctorDashboard() {
         bio: res.data.bio || ''
       });
       if (res.data.profileImagePath) {
-        setProfilePreview('/api/doctor/profile/image');
+        await loadDoctorProfilePreview();
+      } else {
+        setProfilePreview('');
       }
     } catch (err) {
       console.error('Profile fetch error', err);
@@ -256,9 +279,26 @@ export default function DoctorDashboard() {
         headers: { ...authHeader, 'Content-Type': 'multipart/form-data' }
       });
       setProfile(res.data);
-      setProfilePreview(`/api/doctor/profile/image?ts=${Date.now()}`);
+      await loadDoctorProfilePreview();
+      setMessage('Profile preview updated successfully');
     } catch (err) {
-      setMessage('Failed to upload image');
+      setMessage('Failed to upload image preview');
+    }
+  };
+
+  const askPatientForMedicalRecords = async () => {
+    if (!selectedPatient) return;
+
+    try {
+      await axios.post(
+        `/api/doctor/patients/${selectedPatient.userId}/request-records`,
+        {},
+        { headers: authHeader }
+      );
+      setMessage('Request sent. Patient will see it in notifications.');
+    } catch (err) {
+      const errorMsg = err?.response?.data?.message || err?.response?.data || 'Failed to send request notification';
+      setMessage(typeof errorMsg === 'string' ? errorMsg : 'Failed to send request notification');
     }
   };
 
@@ -299,6 +339,29 @@ export default function DoctorDashboard() {
       fetchAppointments();
     } catch (err) {
       setMessage('Failed to update appointment');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const approveAllPendingAppointments = async () => {
+    if (!pendingAppointments.length) {
+      setMessage('No pending appointments to approve');
+      return;
+    }
+
+    setLoading(true);
+    setMessage('');
+    try {
+      await Promise.all(
+        pendingAppointments.map((apt) =>
+          axios.put(`/api/doctor/appointments/${apt.id}/accept`, {}, { headers: authHeader })
+        )
+      );
+      setMessage(`Approved ${pendingAppointments.length} pending appointment(s)`);
+      fetchAppointments();
+    } catch (err) {
+      setMessage('Failed to bulk approve pending appointments');
     } finally {
       setLoading(false);
     }
@@ -413,6 +476,28 @@ export default function DoctorDashboard() {
     if (!selectedPatient) return [];
     return appointments.filter((apt) => apt.patient?.id === selectedPatient.profileId);
   }, [appointments, selectedPatient]);
+
+  const categorizeRecord = (record) => {
+    const explicitCategory = String(record?.category || record?.recordType || '').toUpperCase();
+    if (explicitCategory) {
+      return explicitCategory;
+    }
+
+    const rawText = `${record?.fileName || record?.filename || ''} ${record?.notes || record?.content || ''}`.toLowerCase();
+    if (rawText.includes('prescription')) return 'PRESCRIPTION';
+    if (rawText.includes('report') || rawText.includes('lab') || rawText.includes('test')) return 'TEST_REPORT';
+    if (rawText.includes('diagnosis')) return 'DIAGNOSIS';
+    if (rawText.includes('discharge')) return 'DISCHARGE_SUMMARY';
+    if (rawText.includes('vaccin')) return 'VACCINATION';
+    return 'OTHER';
+  };
+
+  const visiblePatientRecords = useMemo(() => {
+    if (recordViewCategory === 'ALL') {
+      return patientRecords;
+    }
+    return patientRecords.filter((record) => categorizeRecord(record) === recordViewCategory);
+  }, [patientRecords, recordViewCategory]);
 
   const tileClassName = ({ date }) => {
     const dayList = appointments.filter(
@@ -543,7 +628,7 @@ export default function DoctorDashboard() {
           </div>
           <div className="doctor-profile-chip">
             {profilePreview ? (
-              <img src={profilePreview} alt="Doctor" />
+              <img src={profilePreview} alt="Doctor" onError={() => setMessage('Error loading preview image')} />
             ) : (
               <div className="doctor-profile-placeholder">D</div>
             )}
@@ -598,7 +683,17 @@ export default function DoctorDashboard() {
         {activeSection === 'appointments' && (
           <section className="doctor-section">
             <div className="doctor-card">
-              <h2>Appointment Requests</h2>
+              <div className="doctor-appointments-head">
+                <h2>Appointment Requests</h2>
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={approveAllPendingAppointments}
+                  disabled={loading || pendingAppointments.length === 0}
+                >
+                  {loading ? 'Approving...' : `Fast Approve (${pendingAppointments.length})`}
+                </button>
+              </div>
               <div className="table-responsive">
                 <table className="doctor-table">
                   <thead>
@@ -811,6 +906,22 @@ export default function DoctorDashboard() {
                       <h4 style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <FiFileText size={16} /> Medical Records
                       </h4>
+
+                      <div className="doctor-record-toolbar">
+                        <div className="doctor-record-filter-row">
+                          {DOCTOR_RECORD_FILTERS.map((option) => (
+                            <button
+                              key={option.key}
+                              type="button"
+                              className={`doctor-record-filter-btn ${recordViewCategory === option.key ? 'active' : ''}`}
+                              onClick={() => setRecordViewCategory(option.key)}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                        <span className="doctor-record-count">Showing {visiblePatientRecords.length} of {patientRecords.length}</span>
+                      </div>
                       
                       {accessDeniedPatient === selectedPatient.userId ? (
                         <div style={{ 
@@ -832,68 +943,56 @@ export default function DoctorDashboard() {
                               This patient has not granted you consent to view their medical records yet.
                               They can grant access from their account settings.
                             </p>
+                            <button
+                              type="button"
+                              className="doctor-record-request-btn"
+                              onClick={askPatientForMedicalRecords}
+                            >
+                              Ask for Medical Records
+                            </button>
                           </div>
                         </div>
-                      ) : patientRecords.length === 0 ? (
-                        <p className="muted" style={{ fontSize: '0.9em' }}>No records available yet.</p>
+                      ) : visiblePatientRecords.length === 0 ? (
+                        <div>
+                          <p className="muted" style={{ fontSize: '0.9em' }}>No records available yet.</p>
+                          <button
+                            type="button"
+                            className="doctor-record-request-btn"
+                            onClick={askPatientForMedicalRecords}
+                          >
+                            Ask for Medical Records
+                          </button>
+                        </div>
                       ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {patientRecords.map((record) => (
-                            <div key={record.id} style={{
-                              backgroundColor: '#f9fafb',
-                              border: '1px solid #e5e7eb',
-                              borderRadius: '6px',
-                              padding: '10px',
-                              fontSize: '0.9em'
-                            }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '6px' }}>
-                                <div>
-                                  <strong>{record.fileName || 'Record'}</strong>
-                                  {record.category && (
-                                    <span style={{
-                                      display: 'inline-block',
-                                      marginLeft: '8px',
-                                      backgroundColor: '#dbeafe',
-                                      color: '#075985',
-                                      padding: '2px 6px',
-                                      borderRadius: '3px',
-                                      fontSize: '0.8em',
-                                      fontWeight: '500'
-                                    }}>
-                                      {record.category}
-                                    </span>
-                                  )}
+                        <div className="doctor-record-list">
+                          {visiblePatientRecords.map((record) => {
+                            const normalizedCategory = categorizeRecord(record);
+                            const fileLabel = record.fileName || record.filename || 'Record';
+                            const notes = record.notes || record.content;
+                            const uploadedAt = record.uploadDate || record.uploadedAt || record.recordDate;
+
+                            return (
+                              <article key={record.id} className="doctor-record-card">
+                                <div className="doctor-record-head">
+                                  <div className="doctor-record-title-wrap">
+                                    <strong className="doctor-record-title">{fileLabel}</strong>
+                                    <span className="doctor-record-badge">{normalizedCategory}</span>
+                                  </div>
+                                  <button
+                                    onClick={() => downloadRecord(record)}
+                                    className="doctor-record-download"
+                                    title="Download record"
+                                  >
+                                    <FiDownload size={12} /> Download
+                                  </button>
                                 </div>
-                                <button 
-                                  onClick={() => downloadRecord(record)}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    padding: '4px 8px',
-                                    backgroundColor: '#f0f9ff',
-                                    border: '1px solid #bfdbfe',
-                                    color: '#0369a1',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    fontSize: '0.8em',
-                                    fontWeight: '500'
-                                  }}
-                                  title="Download record"
-                                >
-                                  <FiDownload size={12} /> Download
-                                </button>
-                              </div>
-                              {record.notes && (
-                                <p style={{ color: '#6b7280', margin: '6px 0 0 0' }}>
-                                  {record.notes}
+                                {notes && <p className="doctor-record-notes">{notes}</p>}
+                                <p className="doctor-record-date">
+                                  Uploaded: {uploadedAt ? new Date(uploadedAt).toLocaleDateString() : '-'}
                                 </p>
-                              )}
-                              <p style={{ fontSize: '0.8em', color: '#9ca3af', margin: '4px 0 0 0' }}>
-                                Uploaded: {record.uploadDate ? new Date(record.uploadDate).toLocaleDateString() : '-'}
-                              </p>
-                            </div>
-                          ))}
+                              </article>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -1216,15 +1315,6 @@ export default function DoctorDashboard() {
         />
       )}
 
-      {!isProfileComplete && activeSection !== 'profile' && (
-        <div className="doctor-overlay">
-          <div className="doctor-overlay-card">
-            <h3>Complete Your Profile</h3>
-            <p>Please fill in your professional details before managing appointments.</p>
-            <button className="primary" onClick={() => setActiveSection('profile')}>Go to Profile</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

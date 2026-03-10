@@ -1,0 +1,3 @@
+Patient: Pranesh Sekar
+Diagnosis: Migraine without aura
+Advice: hydration, sleep hygiene

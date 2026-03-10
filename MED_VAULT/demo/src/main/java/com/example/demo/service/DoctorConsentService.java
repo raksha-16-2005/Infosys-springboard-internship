@@ -2,7 +2,9 @@ package com.example.demo.service;
 
 import com.example.demo.dto.DoctorConsentDTO;
 import com.example.demo.model.DoctorAccessConsent;
+import com.example.demo.model.DoctorProfile;
 import com.example.demo.model.User;
+import com.example.demo.repository.DoctorProfileRepository;
 import com.example.demo.repository.DoctorAccessConsentRepository;
 import com.example.demo.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -16,11 +18,14 @@ public class DoctorConsentService {
 
     private final DoctorAccessConsentRepository consentRepository;
     private final UserRepository userRepository;
+    private final DoctorProfileRepository doctorProfileRepository;
 
     public DoctorConsentService(DoctorAccessConsentRepository consentRepository,
-                                UserRepository userRepository) {
+                                UserRepository userRepository,
+                                DoctorProfileRepository doctorProfileRepository) {
         this.consentRepository = consentRepository;
         this.userRepository = userRepository;
+        this.doctorProfileRepository = doctorProfileRepository;
     }
 
     public DoctorConsentDTO grantConsent(User patientUser, Long doctorId, String reason) {
@@ -90,13 +95,21 @@ public class DoctorConsentService {
     }
 
     private User getDoctorUserOrThrow(Long doctorId) {
-        User doctor = userRepository.findById(doctorId)
-                .orElseThrow(() -> new IllegalArgumentException("Doctor not found"));
+        User doctor = userRepository.findById(doctorId).orElse(null);
+        if (doctor != null && isDoctorRole(doctor.getRole())) {
+            return doctor;
+        }
 
-        if (!isDoctorRole(doctor.getRole())) {
+        DoctorProfile doctorProfile = doctorProfileRepository.findById(doctorId).orElse(null);
+        if (doctorProfile != null && doctorProfile.getUser() != null && isDoctorRole(doctorProfile.getUser().getRole())) {
+            return doctorProfile.getUser();
+        }
+
+        if (doctor != null) {
             throw new IllegalArgumentException("Selected user is not a doctor");
         }
-        return doctor;
+
+        throw new IllegalArgumentException("Doctor not found");
     }
 
     private boolean isDoctorRole(String role) {
