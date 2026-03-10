@@ -357,6 +357,155 @@
   gap: 10px;
 }
 
+.doctor-record-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.doctor-record-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.86rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+.doctor-record-filter select {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 7px 10px;
+  background: #ffffff;
+  font-size: 0.9rem;
+  min-width: 180px;
+}
+
+.doctor-record-filter-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  max-width: 560px;
+}
+
+.doctor-record-filter-btn {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  padding: 7px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+
+.doctor-record-filter-btn.active {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+}
+
+.doctor-record-count {
+  font-size: 0.84rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.doctor-record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.doctor-record-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 12px;
+}
+
+.doctor-record-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.doctor-record-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.doctor-record-title {
+  color: #0f172a;
+  line-height: 1.35;
+}
+
+.doctor-record-badge {
+  display: inline-flex;
+  align-items: center;
+  background: #dbeafe;
+  color: #075985;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.doctor-record-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.doctor-record-notes {
+  margin: 8px 0 4px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.doctor-record-date {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.8rem;
+}
+
+.doctor-record-request-btn {
+  margin-top: 10px;
+  border: 1px solid #fca5a5;
+  background: #fff1f2;
+  color: #9f1239;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.doctor-appointments-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
 .doctor-note-item {
   padding: 12px 14px;
   border-radius: 12px;

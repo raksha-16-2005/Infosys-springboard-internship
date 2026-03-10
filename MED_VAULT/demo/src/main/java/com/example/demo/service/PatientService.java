@@ -26,6 +26,8 @@ public class PatientService {
     private final UserRepository userRepository;
     private final MedicalRecordRepository medicalRecordRepo;
     private final AppointmentFeedbackRepository feedbackRepository;
+    private final EmailService emailService;
+    private final NotificationService notificationService;
 
     @Autowired
     private FileValidator fileValidator;
@@ -36,7 +38,9 @@ public class PatientService {
                           PrescriptionRepository prescriptionRepo,
                           UserRepository userRepository,
                           MedicalRecordRepository medicalRecordRepo,
-                          AppointmentFeedbackRepository feedbackRepository) {
+                          AppointmentFeedbackRepository feedbackRepository,
+                          EmailService emailService,
+                          NotificationService notificationService) {
         this.profileRepo = profileRepo;
         this.apptRepo = apptRepo;
         this.doctorProfileRepo = doctorProfileRepo;
@@ -44,6 +48,8 @@ public class PatientService {
         this.userRepository = userRepository;
         this.medicalRecordRepo = medicalRecordRepo;
         this.feedbackRepository = feedbackRepository;
+        this.emailService = emailService;
+        this.notificationService = notificationService;
     }
 
     public PatientProfileDTO getProfile(User user) {
@@ -137,6 +143,24 @@ public class PatientService {
         a.setStatus(Appointment.Status.SCHEDULED);
         a = apptRepo.save(a);
         System.out.println("Appointment saved successfully with ID: " + a.getId());
+
+        String patientName = patient.getFullName() != null ? patient.getFullName() : patient.getUsername();
+        String doctorName = dProfile.getFullName() != null ? dProfile.getFullName() : doctorUser.getUsername();
+
+        emailService.sendAppointmentBookedEmail(patient.getEmail(), patientName, doctorName, a.getAppointmentDate());
+        emailService.sendDoctorAppointmentRequestEmail(doctorUser.getEmail(), doctorName, patientName, a.getAppointmentDate());
+
+        notificationService.createNotification(
+            patient.getId(),
+            Notification.NotificationType.APPOINTMENT_CONFIRMED,
+            "Appointment booked with Dr. " + doctorName + " for " + a.getAppointmentDate()
+        );
+        notificationService.createNotification(
+            doctorUser.getId(),
+            Notification.NotificationType.DOCTOR_MESSAGE,
+            "New appointment request from " + patientName + " for " + a.getAppointmentDate()
+        );
+
         return convertToAppointmentDTO(a);
     }
 
