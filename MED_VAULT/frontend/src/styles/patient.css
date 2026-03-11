@@ -2719,7 +2719,290 @@
   max-width: 1000px;
 }
 
+/* ===== Sidebar Page Spacing Refresh ===== */
+
+.patient-shell .patient-content {
+  padding: 40px 42px 56px;
+}
+
+.patient-shell .dashboard-section,
+.patient-shell .booking-form,
+.patient-shell .feedback-form-card,
+.patient-shell .feedback-list-card,
+.patient-shell .upload-section,
+.patient-shell .filter-section,
+.patient-shell .grant-consent-card,
+.patient-shell .profile-form,
+.patient-shell .notifications-controls,
+.patient-shell .audit-controls,
+.patient-shell .timeline-content,
+.patient-shell .notification-item,
+.patient-shell .appointment-item,
+.patient-shell .profile-image-section,
+.patient-shell .calendar-container,
+.patient-shell .selected-date-appointments,
+.patient-shell .appointment-detail,
+.patient-shell .record-item,
+.patient-shell .prescription-item,
+.patient-shell .doctor-card {
+  border-radius: 16px;
+}
+
+.patient-shell .dashboard-section,
+.patient-shell .booking-form,
+.patient-shell .feedback-form-card,
+.patient-shell .feedback-list-card,
+.patient-shell .upload-section,
+.patient-shell .filter-section,
+.patient-shell .grant-consent-card,
+.patient-shell .profile-form,
+.patient-shell .profile-image-section,
+.patient-shell .calendar-container,
+.patient-shell .selected-date-appointments,
+.patient-shell .appointment-detail,
+.patient-shell .record-item,
+.patient-shell .prescription-item,
+.patient-shell .doctor-card {
+  padding: 28px;
+}
+
+.patient-shell .book-appointment-section,
+.patient-shell .appointments-section,
+.patient-shell .feedback-section,
+.patient-shell .medical-records-section-enhanced,
+.patient-shell .consents-section,
+.patient-shell .notifications-section,
+.patient-shell .audit-section,
+.patient-shell .calendar-section,
+.patient-shell .profile-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.patient-shell .doctors-grid,
+.patient-shell .consents-grid,
+.patient-shell .stats-grid {
+  gap: 24px;
+}
+
+.patient-shell .form-grid {
+  gap: 20px 24px;
+}
+
+.patient-shell .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.patient-shell .form-group label {
+  margin-bottom: 0;
+}
+
+.patient-shell .form-group input,
+.patient-shell .form-group select,
+.patient-shell .form-group textarea {
+  padding: 13px 15px;
+}
+
+.patient-shell .form-actions {
+  margin-top: 8px;
+  gap: 12px;
+}
+
+.patient-shell .notifications-controls,
+.patient-shell .audit-controls {
+  padding: 20px;
+}
+
+.patient-shell .notification-item,
+.patient-shell .timeline-content,
+.patient-shell .appointment-item {
+  padding: 20px;
+}
+
+.patient-shell .sidebar-header {
+  position: relative;
+  z-index: 2;
+}
+
+.patient-shell .sidebar-ornament {
+  position: relative;
+  width: calc(100% - 34px);
+  margin: 4px auto 20px;
+  min-height: 120px;
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.08), rgba(15, 23, 42, 0.02));
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  overflow: hidden;
+}
+
+.patient-shell .sidebar-ornament-ring {
+  position: absolute;
+  border-radius: 999px;
+  border: 1px dashed rgba(15, 23, 42, 0.14);
+}
+
+.patient-shell .sidebar-ornament-ring.ring-one {
+  inset: 18px;
+  animation: patientSidebarSpin 12s linear infinite;
+}
+
+.patient-shell .sidebar-ornament-ring.ring-two {
+  inset: 36px;
+  animation: patientSidebarSpinReverse 10s linear infinite;
+}
+
+.patient-shell .sidebar-orbit-icon {
+  position: absolute;
+  width: 38px;
+  height: 38px;
+  padding: 9px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+.patient-shell .icon-stethoscope {
+  top: 18px;
+  left: 22px;
+  animation: patientFloatIcon 4.8s ease-in-out infinite;
+}
+
+.patient-shell .icon-hospital {
+  top: 28px;
+  right: 22px;
+  animation: patientFloatIcon 5.2s ease-in-out infinite 0.8s;
+}
+
+.patient-shell .icon-heartbeat {
+  left: calc(50% - 19px);
+  bottom: 18px;
+  animation: patientHeartbeatIcon 2.4s ease-in-out infinite;
+}
+
+.patient-shell .sidebar-nav {
+  position: relative;
+  z-index: 2;
+}
+
+.patient-shell .nav-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.patient-shell .nav-item::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 -24px;
+  width: 24px;
+  background: linear-gradient(90deg, rgba(15, 23, 42, 0.16), transparent);
+  opacity: 0;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.patient-shell .nav-item:hover::after,
+.patient-shell .nav-item.active::after {
+  opacity: 1;
+  transform: translateX(18px);
+}
+
+.patient-shell .nav-icon {
+  transition: transform 0.22s ease;
+}
+
+.patient-shell .nav-item:hover .nav-icon,
+.patient-shell .nav-item.active .nav-icon {
+  transform: translateY(-1px) scale(1.08);
+}
+
+.patient-shell .notifications-empty-state {
+  gap: 10px;
+}
+
+.patient-shell .notifications-empty-hint {
+  display: block;
+  font-size: 0.92rem;
+  color: #64748b;
+}
+
+@keyframes patientSidebarSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes patientSidebarSpinReverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes patientFloatIcon {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-6px) rotate(4deg); }
+}
+
+@keyframes patientHeartbeatIcon {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(1.08); }
+  40% { transform: scale(0.98); }
+}
+
 @media (max-width: 768px) {
+  .patient-shell .patient-content {
+    padding: 24px 18px 36px;
+  }
+
+  .patient-shell .dashboard-section,
+  .patient-shell .booking-form,
+  .patient-shell .feedback-form-card,
+  .patient-shell .feedback-list-card,
+  .patient-shell .upload-section,
+  .patient-shell .filter-section,
+  .patient-shell .grant-consent-card,
+  .patient-shell .profile-form,
+  .patient-shell .profile-image-section,
+  .patient-shell .calendar-container,
+  .patient-shell .selected-date-appointments,
+  .patient-shell .appointment-detail,
+  .patient-shell .record-item,
+  .patient-shell .prescription-item,
+  .patient-shell .doctor-card,
+  .patient-shell .notifications-controls,
+  .patient-shell .audit-controls,
+  .patient-shell .notification-item,
+  .patient-shell .timeline-content,
+  .patient-shell .appointment-item {
+    padding: 20px;
+  }
+
+  .patient-shell .book-appointment-section,
+  .patient-shell .appointments-section,
+  .patient-shell .feedback-section,
+  .patient-shell .medical-records-section-enhanced,
+  .patient-shell .consents-section,
+  .patient-shell .notifications-section,
+  .patient-shell .audit-section,
+  .patient-shell .calendar-section,
+  .patient-shell .profile-section,
+  .patient-shell .form-grid,
+  .patient-shell .doctors-grid,
+  .patient-shell .consents-grid,
+  .patient-shell .stats-grid {
+    gap: 18px;
+  }
+
+  .patient-shell .sidebar-ornament {
+    min-height: 96px;
+  }
+
+  .patient-shell .sidebar-orbit-icon {
+    width: 34px;
+    height: 34px;
+    padding: 8px;
+  }
+
   .modal-content {
     width: 95%;
     max-height: 95vh;

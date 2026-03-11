@@ -770,6 +770,8 @@ export default function PatientDashboard() {
     setAvatarTilt({ x: xShift, y: yShift });
   };
 
+  const selectedNotificationLabel = notificationFilter.replace(/_/g, ' ');
+
   return (
     <motion.div
       className="patient-shell"
@@ -799,6 +801,15 @@ export default function PatientDashboard() {
           <FaHeartbeat className="sidebar-logo" />
           <h2>Patient Portal</h2>
         </div>
+
+        <div className="sidebar-ornament" aria-hidden="true">
+          <FaStethoscope className="sidebar-orbit-icon icon-stethoscope" />
+          <FaHospital className="sidebar-orbit-icon icon-hospital" />
+          <FaHeartbeat className="sidebar-orbit-icon icon-heartbeat" />
+          <span className="sidebar-ornament-ring ring-one" />
+          <span className="sidebar-ornament-ring ring-two" />
+        </div>
+
         <nav className="sidebar-nav">
           {navItems.map(item => (
             <motion.button
@@ -1549,9 +1560,16 @@ export default function PatientDashboard() {
 
             <div className="notifications-list">
               {notifications.length === 0 ? (
-                <div className="no-data">
+                <div className="no-data notifications-empty-state">
                   <FiBell size={48} />
-                  <p>No notifications</p>
+                  <p>
+                    {notificationFilter === 'ALL'
+                      ? 'No notifications yet'
+                      : `No notifications found for ${selectedNotificationLabel}`}
+                  </p>
+                  {notificationFilter !== 'ALL' && (
+                    <span className="notifications-empty-hint">Try a different filter to see more updates.</span>
+                  )}
                 </div>
               ) : (
                 notifications.map(notif => (

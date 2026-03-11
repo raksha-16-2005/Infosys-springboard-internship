@@ -628,6 +628,14 @@ export default function DoctorDashboard() {
           </div>
         </div>
 
+        <div className="doctor-sidebar-orbit" aria-hidden="true">
+          <FaStethoscope className="doctor-orbit-icon icon-stethoscope" />
+          <FaHeartbeat className="doctor-orbit-icon icon-heart" />
+          <FaCalendarAlt className="doctor-orbit-icon icon-calendar" />
+          <span className="doctor-orbit-ring ring-one" />
+          <span className="doctor-orbit-ring ring-two" />
+        </div>
+
         <div className="doctor-nav">
           {navItems.map((item) => {
             const Icon = item.icon;

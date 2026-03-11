@@ -1900,3 +1900,120 @@ body {
     margin-top: 136px;
   }
 }
+
+/* ===== Admin Sidebar Page Spacing Refresh ===== */
+
+.admin-shell .admin-main {
+  padding: 36px 40px 52px;
+  gap: 24px;
+}
+
+.admin-shell .admin-section {
+  gap: 22px;
+}
+
+.admin-shell .admin-table-card,
+.admin-shell .admin-report,
+.admin-shell .admin-calendar-card,
+.admin-shell .admin-calendar-list,
+.admin-shell .admin-profile-card,
+.admin-shell .admin-reschedule-card,
+.admin-shell .admin-glass-header,
+.admin-shell .admin-stat-card,
+.admin-shell .admin-appointment-card,
+.admin-shell .admin-modal-card {
+  border-radius: 22px;
+}
+
+.admin-shell .admin-table-card,
+.admin-shell .admin-report,
+.admin-shell .admin-calendar-card,
+.admin-shell .admin-calendar-list,
+.admin-shell .admin-profile-card,
+.admin-shell .admin-reschedule-card,
+.admin-shell .admin-glass-header,
+.admin-shell .admin-modal-card {
+  padding: 28px;
+}
+
+.admin-shell .admin-stat-card,
+.admin-shell .admin-appointment-card,
+.admin-shell .admin-report-grid > div {
+  padding: 18px;
+}
+
+.admin-shell .admin-stats-grid,
+.admin-shell .admin-calendar-grid,
+.admin-shell .admin-report-grid,
+.admin-shell .admin-profile-grid,
+.admin-shell .admin-reschedule-row {
+  gap: 20px;
+}
+
+.admin-shell .admin-table-header {
+  margin-bottom: 18px;
+}
+
+.admin-shell .admin-table th,
+.admin-shell .admin-table td {
+  padding: 14px 12px;
+}
+
+.admin-shell .admin-actions {
+  gap: 10px;
+}
+
+.admin-shell .admin-profile-form,
+.admin-shell .admin-reschedule-form {
+  gap: 16px;
+}
+
+.admin-shell .admin-profile-form label,
+.admin-shell .admin-reschedule-form label {
+  gap: 8px;
+}
+
+.admin-shell .admin-profile-form input,
+.admin-shell .admin-reschedule-form input,
+.admin-shell .admin-reschedule-form textarea,
+.admin-shell .admin-search input,
+.admin-shell input:not([type='checkbox']):not([type='radio']),
+.admin-shell select,
+.admin-shell textarea {
+  padding: 12px 14px;
+}
+
+@media (max-width: 840px) {
+  .admin-shell .admin-main {
+    padding: 76px 18px 30px;
+    gap: 18px;
+  }
+
+  .admin-shell .admin-table-card,
+  .admin-shell .admin-report,
+  .admin-shell .admin-calendar-card,
+  .admin-shell .admin-calendar-list,
+  .admin-shell .admin-profile-card,
+  .admin-shell .admin-reschedule-card,
+  .admin-shell .admin-glass-header,
+  .admin-shell .admin-modal-card {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-shell .admin-stat-card,
+  .admin-shell .admin-appointment-card,
+  .admin-shell .admin-report-grid > div {
+    padding: 16px;
+  }
+
+  .admin-shell .admin-stats-grid,
+  .admin-shell .admin-calendar-grid,
+  .admin-shell .admin-report-grid,
+  .admin-shell .admin-profile-grid,
+  .admin-shell .admin-reschedule-row,
+  .admin-shell .admin-section {
+    gap: 16px;
+  }
+}

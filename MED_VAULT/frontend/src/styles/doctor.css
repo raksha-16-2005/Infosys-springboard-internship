@@ -944,3 +944,241 @@
   border: 1px solid #dc2626;
 }
 
+/* ===== Sidebar Page Spacing Refresh ===== */
+
+.doctor-main {
+  padding: 40px 42px 56px;
+  gap: 28px;
+}
+
+.doctor-sidebar {
+  position: relative;
+  overflow: hidden;
+}
+
+.doctor-sidebar-orbit {
+  position: relative;
+  min-height: 126px;
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.06), rgba(15, 23, 42, 0.015));
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  overflow: hidden;
+}
+
+.doctor-orbit-ring {
+  position: absolute;
+  border-radius: 999px;
+  border: 1px dashed rgba(15, 23, 42, 0.14);
+}
+
+.doctor-orbit-ring.ring-one {
+  inset: 16px;
+  animation: doctorSidebarSpin 14s linear infinite;
+}
+
+.doctor-orbit-ring.ring-two {
+  inset: 34px;
+  animation: doctorSidebarSpinReverse 11s linear infinite;
+}
+
+.doctor-orbit-icon {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  padding: 9px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+}
+
+.doctor-orbit-icon.icon-stethoscope {
+  left: 20px;
+  top: 18px;
+  animation: doctorFloatIcon 4.8s ease-in-out infinite;
+}
+
+.doctor-orbit-icon.icon-heart {
+  right: 18px;
+  top: 30px;
+  animation: doctorHeartbeatPulse 2.5s ease-in-out infinite;
+}
+
+.doctor-orbit-icon.icon-calendar {
+  left: calc(50% - 20px);
+  bottom: 18px;
+  animation: doctorFloatIcon 5.2s ease-in-out infinite 0.9s;
+}
+
+.doctor-nav button {
+  position: relative;
+  overflow: hidden;
+}
+
+.doctor-nav button::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 -28px;
+  width: 28px;
+  background: linear-gradient(90deg, rgba(15, 23, 42, 0.12), transparent);
+  opacity: 0;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.doctor-nav button:hover::after,
+.doctor-nav button.active::after {
+  opacity: 1;
+  transform: translateX(20px);
+}
+
+.doctor-nav button svg {
+  transition: transform 0.22s ease;
+}
+
+.doctor-nav button:hover svg,
+.doctor-nav button.active svg {
+  transform: translateY(-1px) scale(1.08);
+}
+
+.doctor-section {
+  gap: 24px;
+}
+
+.doctor-grid,
+.doctor-calendar-grid,
+.doctor-note-list,
+.doctor-record-list {
+  gap: 20px;
+}
+
+.doctor-card,
+.doctor-calendar-card,
+.doctor-modal-card,
+.doctor-overlay-card,
+.doctor-profile-form-premium,
+.doctor-profile-media,
+.doctor-record-card,
+.doctor-note-item {
+  border-radius: 20px;
+}
+
+.doctor-card,
+.doctor-calendar-card,
+.doctor-modal-card,
+.doctor-overlay-card,
+.doctor-profile-form-premium,
+.doctor-profile-media {
+  padding: 28px;
+}
+
+.doctor-record-card,
+.doctor-note-item {
+  padding: 18px;
+}
+
+.doctor-table th,
+.doctor-table td {
+  padding: 14px 12px;
+}
+
+.doctor-actions {
+  gap: 10px;
+}
+
+.doctor-profile-form,
+.doctor-profile-form-premium,
+.doctor-reschedule-card,
+.doctor-reschedule-card .doctor-actions {
+  gap: 16px;
+}
+
+.doctor-profile-form label,
+.doctor-profile-form-premium label,
+.doctor-reschedule-card label,
+.doctor-record-filter {
+  gap: 8px;
+}
+
+.doctor-profile-form input,
+.doctor-profile-form textarea,
+.doctor-profile-form-premium input,
+.doctor-profile-form-premium textarea,
+.doctor-profile-form-premium select,
+.doctor-reschedule-card input,
+.doctor-reschedule-card textarea,
+.doctor-reschedule-card select,
+.doctor-record-filter select,
+.doctor-shell input:not([type='checkbox']):not([type='radio']),
+.doctor-shell select,
+.doctor-shell textarea {
+  padding: 12px 14px;
+}
+
+.doctor-record-toolbar,
+.doctor-appointments-head {
+  margin-bottom: 18px;
+}
+
+@media (max-width: 1024px) {
+  .doctor-main {
+    padding: 28px 24px 36px;
+    gap: 22px;
+  }
+}
+
+@media (max-width: 768px) {
+  .doctor-main {
+    padding: 22px 16px 30px;
+  }
+
+  .doctor-card,
+  .doctor-calendar-card,
+  .doctor-modal-card,
+  .doctor-overlay-card,
+  .doctor-profile-form-premium,
+  .doctor-profile-media,
+  .doctor-record-card,
+  .doctor-note-item {
+    padding: 20px;
+  }
+
+  .doctor-grid,
+  .doctor-calendar-grid,
+  .doctor-note-list,
+  .doctor-record-list,
+  .doctor-section {
+    gap: 16px;
+  }
+
+  .doctor-sidebar-orbit {
+    min-height: 96px;
+  }
+
+  .doctor-orbit-icon {
+    width: 34px;
+    height: 34px;
+    padding: 8px;
+  }
+}
+
+@keyframes doctorSidebarSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes doctorSidebarSpinReverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes doctorFloatIcon {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-6px) rotate(4deg); }
+}
+
+@keyframes doctorHeartbeatPulse {
+  0%, 100% { transform: scale(1); }
+  30% { transform: scale(1.08); }
+  45% { transform: scale(0.98); }
+}
+
