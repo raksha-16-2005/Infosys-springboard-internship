@@ -29,6 +29,8 @@ public class DoctorService {
     private final MedicalRecordRepository medicalRecordRepository;
     private final AppointmentFeedbackRepository feedbackRepository;
     private final DoctorConsentService doctorConsentService;
+    private final NotificationService notificationService;
+    private final EmailService emailService;
 
     @Autowired
     private FileValidator fileValidator;
@@ -39,7 +41,9 @@ public class DoctorService {
                          UserRepository userRepository,
                          MedicalRecordRepository medicalRecordRepository,
                          AppointmentFeedbackRepository feedbackRepository,
-                         DoctorConsentService doctorConsentService) {
+                         DoctorConsentService doctorConsentService,
+                         NotificationService notificationService,
+                         EmailService emailService) {
         this.doctorProfileRepo = doctorProfileRepo;
         this.apptRepo = apptRepo;
         this.prescriptionRepo = prescriptionRepo;
@@ -47,6 +51,8 @@ public class DoctorService {
         this.medicalRecordRepository = medicalRecordRepository;
         this.feedbackRepository = feedbackRepository;
         this.doctorConsentService = doctorConsentService;
+        this.notificationService = notificationService;
+        this.emailService = emailService;
     }
 
     public DoctorProfileDTO getProfile(User user) {
@@ -171,6 +177,34 @@ public class DoctorService {
         if (a == null) return null;
         a.setStatus(Appointment.Status.ACCEPTED);
         a = apptRepo.save(a);
+        
+        // Send notification and email to patient
+        try {
+            User patient = a.getPatient().getUser();
+            String doctorName = a.getDoctor().getFullName() != null ? 
+                a.getDoctor().getFullName() : a.getDoctor().getUser().getUsername();
+            String appointmentDate = a.getAppointmentDate() != null ? 
+                a.getAppointmentDate().toString() : "TBD";
+            
+            notificationService.createNotification(
+                    patient.getId(),
+                    Notification.NotificationType.APPOINTMENT_CONFIRMED,
+                    "Appointment confirmed: Dr. " + doctorName + " has confirmed your appointment on " + appointmentDate
+            );
+            
+            if (patient.getEmail() != null && !patient.getEmail().isBlank()) {
+                emailService.sendSimpleEmail(
+                        patient.getEmail(),
+                        "Appointment Confirmed",
+                        "Your appointment with Dr. " + doctorName + " has been confirmed for " + appointmentDate + "."
+                );
+            }
+            System.out.println("[APPOINTMENT-ACCEPT] Notification and email sent to patient");
+        } catch (Exception e) {
+            System.err.println("[APPOINTMENT-ACCEPT-ERROR] Failed to send notification/email: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
         return convertToAppointmentDTO(a);
     }
 
@@ -180,6 +214,34 @@ public class DoctorService {
         a.setStatus(Appointment.Status.REJECTED);
         a.setDoctorRemarks(remarks);
         a = apptRepo.save(a);
+        
+        // Send notification and email to patient
+        try {
+            User patient = a.getPatient().getUser();
+            String doctorName = a.getDoctor().getFullName() != null ? 
+                a.getDoctor().getFullName() : a.getDoctor().getUser().getUsername();
+            
+            notificationService.createNotification(
+                    patient.getId(),
+                    Notification.NotificationType.SYSTEM_NOTIFICATION,
+                    "Appointment rejected: Dr. " + doctorName + " has rejected your appointment request. " +
+                    (remarks != null && !remarks.isBlank() ? "Reason: " + remarks : "")
+            );
+            
+            if (patient.getEmail() != null && !patient.getEmail().isBlank()) {
+                emailService.sendSimpleEmail(
+                        patient.getEmail(),
+                        "Appointment Rejected",
+                        "Your appointment request has been rejected by Dr. " + doctorName + 
+                        (remarks != null && !remarks.isBlank() ? "\nReason: " + remarks : "")
+                );
+            }
+            System.out.println("[APPOINTMENT-REJECT] Notification and email sent to patient");
+        } catch (Exception e) {
+            System.err.println("[APPOINTMENT-REJECT-ERROR] Failed to send notification/email: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
         return convertToAppointmentDTO(a);
     }
 
@@ -193,6 +255,34 @@ public class DoctorService {
             a.setRescheduledDate(newDate);
         }
         a = apptRepo.save(a);
+        
+        // Send notification and email to patient
+        try {
+            User patient = a.getPatient().getUser();
+            String doctorName = a.getDoctor().getFullName() != null ? 
+                a.getDoctor().getFullName() : a.getDoctor().getUser().getUsername();
+            String newDateStr = newDate != null ? newDate.toString() : "TBD";
+            
+            notificationService.createNotification(
+                    patient.getId(),
+                    Notification.NotificationType.APPOINTMENT_REMINDER,
+                    "Appointment rescheduled: Dr. " + doctorName + " has rescheduled your appointment to " + newDateStr
+            );
+            
+            if (patient.getEmail() != null && !patient.getEmail().isBlank()) {
+                emailService.sendSimpleEmail(
+                        patient.getEmail(),
+                        "Appointment Rescheduled",
+                        "Your appointment with Dr. " + doctorName + " has been rescheduled to " + newDateStr + 
+                        (remarks != null && !remarks.isBlank() ? "\nNote: " + remarks : "")
+                );
+            }
+            System.out.println("[APPOINTMENT-RESCHEDULE] Notification and email sent to patient");
+        } catch (Exception e) {
+            System.err.println("[APPOINTMENT-RESCHEDULE-ERROR] Failed to send notification/email: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
         return convertToAppointmentDTO(a);
     }
 
@@ -247,6 +337,32 @@ public class DoctorService {
             record.setFilename(file.getOriginalFilename());
         }
         record = medicalRecordRepository.save(record);
+        
+        // Send notification and email to patient about new medical record
+        try {
+            String doctorName = doctor.getFullName() != null ? doctor.getFullName() : doctor.getUsername();
+            String recordType = file != null ? file.getOriginalFilename() : "Medical Report";
+            
+            notificationService.createNotification(
+                    patient.getId(),
+                    Notification.NotificationType.REPORT_AVAILABLE,
+                    "Medical report available: Dr. " + doctorName + " has uploaded a new medical record."
+            );
+            
+            if (patient.getEmail() != null && !patient.getEmail().isBlank()) {
+                emailService.sendSimpleEmail(
+                        patient.getEmail(),
+                        "Medical Report Available",
+                        "Dr. " + doctorName + " has uploaded a new medical report: " + recordType + 
+                        ". Please log in to view the details."
+                );
+            }
+            System.out.println("[MEDICAL-RECORD-ADD] Notification and email sent to patient");
+        } catch (Exception e) {
+            System.err.println("[MEDICAL-RECORD-ADD-ERROR] Failed to send notification/email: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
         return toMedicalRecord(record);
     }
 
@@ -274,6 +390,33 @@ public class DoctorService {
         p = prescriptionRepo.save(p);
         appt.setPrescription(p);
         apptRepo.save(appt);
+        
+        // Send notification and email to patient about prescription
+        try {
+            User patient = appt.getPatient().getUser();
+            String doctorName = appt.getDoctor().getFullName() != null ? 
+                appt.getDoctor().getFullName() : appt.getDoctor().getUser().getUsername();
+            
+            notificationService.createNotification(
+                    patient.getId(),
+                    Notification.NotificationType.PRESCRIPTION_REFILL_REMINDER,
+                    "Prescription added: Dr. " + doctorName + " has added a prescription for you."
+            );
+            
+            if (patient.getEmail() != null && !patient.getEmail().isBlank()) {
+                emailService.sendSimpleEmail(
+                        patient.getEmail(),
+                        "Prescription Available",
+                        "Dr. " + doctorName + " has added a prescription for your recent appointment. " +
+                        "Please log in to view the details."
+                );
+            }
+            System.out.println("[PRESCRIPTION-ADD] Notification and email sent to patient");
+        } catch (Exception e) {
+            System.err.println("[PRESCRIPTION-ADD-ERROR] Failed to send notification/email: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
         return convertToPrescriptionDTO(p);
     }
 

@@ -203,10 +203,6 @@ export default function PatientDashboard() {
     }
   };
 
-  const getRecordFileName = (record) => {
-    return record?.fileName || record?.filename || `record-${record?.id || 'file'}`;
-  };
-
   // ===== MEDICAL RECORDS =====
   const fetchMedicalRecordsWithFilter = async () => {
     try {
@@ -325,12 +321,10 @@ export default function PatientDashboard() {
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', fileName || `record-${recordId}`);
+      link.setAttribute('download', fileName);
       document.body.appendChild(link);
       link.click();
-      if (link.parentNode) {
-        link.parentNode.removeChild(link);
-      }
+      link.parentNode.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (e) {
       setMessage('Error downloading file');
@@ -340,9 +334,8 @@ export default function PatientDashboard() {
 
   const previewMedicalRecord = async (record) => {
     try {
-      const fileName = getRecordFileName(record);
-      const fileType = fileName.split('.').pop()?.toLowerCase();
-      console.log('Previewing file:', fileName, 'Type:', fileType);
+      const fileType = record.fileName?.split('.').pop()?.toLowerCase();
+      console.log('Previewing file:', record.fileName, 'Type:', fileType);
       let content = null;
       let displayType = 'text';
       let blobUrl = null; // Track blob URLs for cleanup
@@ -418,26 +411,13 @@ export default function PatientDashboard() {
       setGrantConsentDoctor('');
       setConsentReason('');
       fetchConsents();
+      getUnreadCount();
+      fetchNotifications();
     } catch (e) {
       setMessage(e.response?.data?.error || 'Error granting consent');
       console.error(e);
     }
     setLoading(false);
-  };
-
-  const startEditingRecord = (record) => {
-    setEditingRecordId(record.id);
-    setRecordForm({
-      category: record.category || 'OTHER',
-      notes: record.notes || ''
-    });
-    setRecordFile(null);
-  };
-
-  const cancelEditingRecord = () => {
-    setEditingRecordId(null);
-    setRecordFile(null);
-    setRecordForm({ category: 'OTHER', notes: '' });
   };
 
   const revokeDoctorConsent = async (doctorId) => {
@@ -452,6 +432,8 @@ export default function PatientDashboard() {
       
       setMessage('Doctor access revoked successfully');
       fetchConsents();
+      getUnreadCount();
+      fetchNotifications();
     } catch (e) {
       setMessage(e.response?.data?.error || 'Error revoking consent');
       console.error(e);
@@ -531,6 +513,7 @@ export default function PatientDashboard() {
   useEffect(() => {
     if (activeSection === 'notifications') {
       getUnreadCount();
+      fetchNotifications();
     }
   }, [activeSection]);
 
@@ -683,6 +666,8 @@ export default function PatientDashboard() {
       setSelectedDoctor(null);
       setBookingForm({ appointmentDate: '', timeSlot: '', symptoms: '', notes: '' });
       fetchAppointments();
+      getUnreadCount();
+      fetchNotifications();
       setActiveSection('appointments');
     } catch (e) {
       console.error('Error booking appointment:', e);
@@ -1209,17 +1194,21 @@ export default function PatientDashboard() {
               <h3>Share Your Consultation Feedback</h3>
               <div className="form-grid">
                 <div className="form-group col-2">
-                  <label>Completed Appointment</label>
+                  <label>Select Doctor or Appointment</label>
                   <select
                     value={feedbackForm.appointmentId}
                     onChange={(e) => setFeedbackForm({ ...feedbackForm, appointmentId: e.target.value })}
                   >
-                    <option value="">Select appointment</option>
-                    {completedAppointments.map(appt => (
-                      <option key={appt.id} value={appt.id}>
-                        #{appt.id} - {appt.doctor?.fullName} ({new Date(appt.appointmentDate).toLocaleString()})
-                      </option>
-                    ))}
+                    <option value="">Choose an appointment or doctor...</option>
+                    {appointments && appointments.length > 0 ? (
+                      appointments.map(appt => (
+                        <option key={appt.id} value={appt.id}>
+                          Dr. {appt.doctor?.fullName} - {new Date(appt.appointmentDate).toLocaleDateString()} {new Date(appt.appointmentDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({appt.status})
+                        </option>
+                      ))
+                    ) : (
+                      <option disabled>No appointments found</option>
+                    )}
                   </select>
                 </div>
 
@@ -1280,9 +1269,7 @@ export default function PatientDashboard() {
           <div className="medical-records-section-enhanced">
             {/* Upload Section */}
             <div className="upload-section">
-              <h3>
-                <FaFileUpload /> {editingRecordId ? 'Edit Medical Record' : 'Upload Medical Record'}
-              </h3>
+              <h3><FaFileUpload /> Upload Medical Record</h3>
               <div className="form-grid">
                 <div className="form-group">
                   <label>File *</label>
@@ -1317,22 +1304,9 @@ export default function PatientDashboard() {
                 </div>
               </div>
 
-              <div className="form-actions">
-                <button
-                  className="btn-primary"
-                  onClick={() => (editingRecordId ? updateMedicalRecord(editingRecordId) : uploadMedicalRecord())}
-                  disabled={loading}
-                >
-                  {loading
-                    ? (editingRecordId ? 'Updating...' : 'Uploading...')
-                    : (editingRecordId ? 'Update Record' : 'Upload Record')}
-                </button>
-                {editingRecordId && (
-                  <button className="btn-secondary" onClick={cancelEditingRecord}>
-                    Cancel Edit
-                  </button>
-                )}
-              </div>
+              <button className="btn-primary" onClick={uploadMedicalRecord} disabled={loading}>
+                {loading ? 'Uploading...' : 'Upload Record'}
+              </button>
             </div>
 
             {/* Filter Section */}
@@ -1395,7 +1369,7 @@ export default function PatientDashboard() {
                   {(filteredMedicalRecords.length > 0 ? filteredMedicalRecords : medicalRecords).map(record => (
                     <motion.div key={record.id} className="record-row" whileHover={{ scale: 1.01 }}>
                       <div className="col-name">
-                        <FiFileText /> {getRecordFileName(record)}
+                        <FiFileText /> {record.fileName || 'Record'}
                       </div>
                       <div className="col-category">
                         <span className="badge-category">{record.category?.replace(/_/g, ' ')}</span>
@@ -1407,23 +1381,27 @@ export default function PatientDashboard() {
                         {record.notes ? <span title={record.notes}>{record.notes.substring(0, 30)}...</span> : '—'}
                       </div>
                       <div className="col-actions">
-                        <button 
-                          onClick={() => previewMedicalRecord(record)}
-                          className="action-btn preview" 
-                          title="Preview"
-                        >
-                          <FiEye /> Preview
-                        </button>
-                        <button 
-                          onClick={() => downloadMedicalRecord(record.id, getRecordFileName(record))}
-                          className="action-btn download" 
-                          title="Download"
-                        >
-                          <FiDownload /> Download
-                        </button>
+                        {record.fileUrl && (
+                          <button 
+                            onClick={() => previewMedicalRecord(record)}
+                            className="action-btn preview" 
+                            title="Preview"
+                          >
+                            <FiEye /> Preview
+                          </button>
+                        )}
+                        {record.fileUrl && (
+                          <button 
+                            onClick={() => downloadMedicalRecord(record.id, record.fileName)}
+                            className="action-btn download" 
+                            title="Download"
+                          >
+                            <FiDownload /> Download
+                          </button>
+                        )}
                         <button
                           className="action-btn edit"
-                          onClick={() => startEditingRecord(record)}
+                          onClick={() => setEditingRecordId(record.id)}
                           title="Edit"
                         >
                           <FiEdit2 /> Edit
@@ -1461,7 +1439,7 @@ export default function PatientDashboard() {
                   >
                     <option value="">Choose a doctor...</option>
                     {doctors.map(doc => (
-                      <option key={doc.userId || doc.id} value={doc.userId || doc.id}>
+                      <option key={doc.id} value={doc.id}>
                         Dr. {doc.fullName} - {doc.specialization}
                       </option>
                     ))}
@@ -1496,15 +1474,13 @@ export default function PatientDashboard() {
               ) : (
                 <div className="consents-grid">
                   {consents.map(consent => {
-                    const doctor = doctors.find(d => (d.userId || d.id) === consent.doctorId);
                     const isActive = consent.granted && !consent.revokedAt;
                     
                     return (
                       <motion.div key={consent.id} className="consent-card" whileHover={{ scale: 1.02 }}>
                         <div className="consent-header">
                           <div className="doctor-info">
-                            <h4>Dr. {doctor?.fullName || 'Unknown'}</h4>
-                            <p className="specialization">{doctor?.specialization}</p>
+                            <h4>Dr. {consent.doctorName || 'Unknown'}</h4>
                           </div>
                           <span className={`status-badge ${isActive ? 'active' : 'revoked'}`}>
                             {isActive ? <FiCheckCircle /> : <FiXCircle />}
@@ -1916,7 +1892,7 @@ export default function PatientDashboard() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
-              <h2>Preview: {getRecordFileName(previewRecord)}</h2>
+              <h2>Preview: {previewRecord.fileName}</h2>
               <button 
                 className="close-btn"
                 onClick={() => {
@@ -1961,7 +1937,7 @@ export default function PatientDashboard() {
             <div className="modal-footer">
               <button 
                 className="btn-secondary"
-                onClick={() => downloadMedicalRecord(previewRecord.id, getRecordFileName(previewRecord))}
+                onClick={() => downloadMedicalRecord(previewRecord.id, previewRecord.fileName)}
               >
                 <FiDownload /> Download
               </button>

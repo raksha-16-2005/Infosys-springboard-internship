@@ -59,20 +59,18 @@ import './styles/global.css';
 
 function App() {
     const [isAuthOpen, setAuthOpen] = useState(false);
-    const [user, setUser] = useState(null);
-    const navigate = useNavigate();
-
-    useEffect(() => {
-        // Check for existing session
+    const [user, setUser] = useState(() => {
         const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            try {
-                setUser(JSON.parse(storedUser));
-            } catch (e) {
-                console.error('Failed to parse stored user', e);
-            }
+        if (!storedUser) return null;
+        try {
+            return JSON.parse(storedUser);
+        } catch (e) {
+            console.error('Failed to parse stored user', e);
+            localStorage.removeItem('user');
+            return null;
         }
-    }, []);
+    });
+    const navigate = useNavigate();
 
     const handleLoginSuccess = (userData) => {
         setUser(userData);

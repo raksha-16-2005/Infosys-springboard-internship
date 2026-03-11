@@ -2,15 +2,15 @@ package com.example.demo.service;
 
 import com.example.demo.dto.DoctorConsentDTO;
 import com.example.demo.model.DoctorAccessConsent;
-import com.example.demo.model.DoctorProfile;
+import com.example.demo.model.Notification;
 import com.example.demo.model.User;
-import com.example.demo.repository.DoctorProfileRepository;
 import com.example.demo.repository.DoctorAccessConsentRepository;
 import com.example.demo.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -18,14 +18,17 @@ public class DoctorConsentService {
 
     private final DoctorAccessConsentRepository consentRepository;
     private final UserRepository userRepository;
-    private final DoctorProfileRepository doctorProfileRepository;
+    private final NotificationService notificationService;
+    private final EmailService emailService;
 
     public DoctorConsentService(DoctorAccessConsentRepository consentRepository,
                                 UserRepository userRepository,
-                                DoctorProfileRepository doctorProfileRepository) {
+                                NotificationService notificationService,
+                                EmailService emailService) {
         this.consentRepository = consentRepository;
         this.userRepository = userRepository;
-        this.doctorProfileRepository = doctorProfileRepository;
+        this.notificationService = notificationService;
+        this.emailService = emailService;
     }
 
     public DoctorConsentDTO grantConsent(User patientUser, Long doctorId, String reason) {
@@ -52,7 +55,54 @@ public class DoctorConsentService {
         consent.setRevokedAt(null);
         consent.setReason(reason);
 
-        return toDto(consentRepository.save(consent));
+        DoctorConsentDTO saved = toDto(consentRepository.save(consent));
+        System.out.println("Consent granted for patientId=" + patientUser.getId() + " doctorId=" + doctor.getId());
+        
+        // Create notifications for both doctor and patient
+        try {
+            String doctorName = getDisplayName(doctor);
+            String patientName = getDisplayName(patientUser);
+            
+            // Notify doctor
+            notificationService.createNotification(
+                    doctor.getId(),
+                    Notification.NotificationType.SYSTEM_NOTIFICATION,
+                    "Access granted: " + patientName + " has granted you access to their medical records."
+            );
+            System.out.println("[CONSENT-GRANT] Doctor notification created");
+            
+            // Notify patient
+            notificationService.createNotification(
+                    patientUser.getId(),
+                    Notification.NotificationType.SYSTEM_NOTIFICATION,
+                    "Consent updated: You granted access to Dr. " + doctorName + "."
+            );
+            System.out.println("[CONSENT-GRANT] Patient notification created");
+            
+            // Send email notifications
+            if (doctor.getEmail() != null && !doctor.getEmail().isBlank()) {
+                emailService.sendSimpleEmail(
+                        doctor.getEmail(),
+                        "Medical Records Access Granted",
+                        "Patient " + patientName + " has granted you access to their medical records."
+                );
+                System.out.println("[CONSENT-GRANT] Doctor email sent");
+            }
+            
+            if (patientUser.getEmail() != null && !patientUser.getEmail().isBlank()) {
+                emailService.sendSimpleEmail(
+                        patientUser.getEmail(),
+                        "Consent Granted",
+                        "You have granted access to Dr. " + doctorName + " for your medical records."
+                );
+                System.out.println("[CONSENT-GRANT] Patient email sent");
+            }
+        } catch (Exception e) {
+            System.err.println("[CONSENT-GRANT-ERROR] Failed to send notifications/emails: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        return saved;
     }
 
     public DoctorConsentDTO revokeConsent(User patientUser, Long doctorId, String reason) {
@@ -73,7 +123,54 @@ public class DoctorConsentService {
             consent.setReason(reason);
         }
 
-        return toDto(consentRepository.save(consent));
+        DoctorConsentDTO saved = toDto(consentRepository.save(consent));
+        System.out.println("Consent revoked for patientId=" + patientUser.getId() + " doctorId=" + doctor.getId());
+        
+        // Create notifications for both doctor and patient
+        try {
+            String doctorName = getDisplayName(doctor);
+            String patientName = getDisplayName(patientUser);
+            
+            // Notify doctor
+            notificationService.createNotification(
+                    doctor.getId(),
+                    Notification.NotificationType.SYSTEM_NOTIFICATION,
+                    "Access revoked: " + patientName + " has revoked your access to their medical records."
+            );
+            System.out.println("[CONSENT-REVOKE] Doctor notification created");
+            
+            // Notify patient
+            notificationService.createNotification(
+                    patientUser.getId(),
+                    Notification.NotificationType.SYSTEM_NOTIFICATION,
+                    "Consent updated: You revoked access from Dr. " + doctorName + "."
+            );
+            System.out.println("[CONSENT-REVOKE] Patient notification created");
+            
+            // Send email notifications
+            if (doctor.getEmail() != null && !doctor.getEmail().isBlank()) {
+                emailService.sendSimpleEmail(
+                        doctor.getEmail(),
+                        "Medical Records Access Revoked",
+                        "Patient " + patientName + " has revoked your access to their medical records."
+                );
+                System.out.println("[CONSENT-REVOKE] Doctor email sent");
+            }
+            
+            if (patientUser.getEmail() != null && !patientUser.getEmail().isBlank()) {
+                emailService.sendSimpleEmail(
+                        patientUser.getEmail(),
+                        "Consent Revoked",
+                        "You have revoked access from Dr. " + doctorName + " for your medical records."
+                );
+                System.out.println("[CONSENT-REVOKE] Patient email sent");
+            }
+        } catch (Exception e) {
+            System.err.println("[CONSENT-REVOKE-ERROR] Failed to send notifications/emails: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        return saved;
     }
 
     public List<DoctorConsentDTO> listConsents(User patientUser) {
@@ -95,21 +192,14 @@ public class DoctorConsentService {
     }
 
     private User getDoctorUserOrThrow(Long doctorId) {
-        User doctor = userRepository.findById(doctorId).orElse(null);
-        if (doctor != null && isDoctorRole(doctor.getRole())) {
-            return doctor;
-        }
+        Long safeDoctorId = Objects.requireNonNull(doctorId, "doctorId is required");
+        User doctor = userRepository.findById(safeDoctorId)
+                .orElseThrow(() -> new IllegalArgumentException("Doctor not found"));
 
-        DoctorProfile doctorProfile = doctorProfileRepository.findById(doctorId).orElse(null);
-        if (doctorProfile != null && doctorProfile.getUser() != null && isDoctorRole(doctorProfile.getUser().getRole())) {
-            return doctorProfile.getUser();
-        }
-
-        if (doctor != null) {
+        if (!isDoctorRole(doctor.getRole())) {
             throw new IllegalArgumentException("Selected user is not a doctor");
         }
-
-        throw new IllegalArgumentException("Doctor not found");
+        return doctor;
     }
 
     private boolean isDoctorRole(String role) {
@@ -135,5 +225,18 @@ public class DoctorConsentService {
         dto.setReason(consent.getReason());
         dto.setUpdatedAt(consent.getUpdatedAt());
         return dto;
+    }
+
+    private String getDisplayName(User user) {
+        if (user == null) {
+            return "Unknown";
+        }
+        if (user.getFullName() != null && !user.getFullName().isBlank()) {
+            return user.getFullName();
+        }
+        if (user.getName() != null && !user.getName().isBlank()) {
+            return user.getName();
+        }
+        return user.getUsername();
     }
 }

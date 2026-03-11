@@ -26,8 +26,8 @@ public class PatientService {
     private final UserRepository userRepository;
     private final MedicalRecordRepository medicalRecordRepo;
     private final AppointmentFeedbackRepository feedbackRepository;
-    private final EmailService emailService;
     private final NotificationService notificationService;
+    private final EmailService emailService;
 
     @Autowired
     private FileValidator fileValidator;
@@ -39,8 +39,8 @@ public class PatientService {
                           UserRepository userRepository,
                           MedicalRecordRepository medicalRecordRepo,
                           AppointmentFeedbackRepository feedbackRepository,
-                          EmailService emailService,
-                          NotificationService notificationService) {
+                          NotificationService notificationService,
+                          EmailService emailService) {
         this.profileRepo = profileRepo;
         this.apptRepo = apptRepo;
         this.doctorProfileRepo = doctorProfileRepo;
@@ -48,8 +48,8 @@ public class PatientService {
         this.userRepository = userRepository;
         this.medicalRecordRepo = medicalRecordRepo;
         this.feedbackRepository = feedbackRepository;
-        this.emailService = emailService;
         this.notificationService = notificationService;
+        this.emailService = emailService;
     }
 
     public PatientProfileDTO getProfile(User user) {
@@ -143,24 +143,51 @@ public class PatientService {
         a.setStatus(Appointment.Status.SCHEDULED);
         a = apptRepo.save(a);
         System.out.println("Appointment saved successfully with ID: " + a.getId());
-
-        String patientName = patient.getFullName() != null ? patient.getFullName() : patient.getUsername();
-        String doctorName = dProfile.getFullName() != null ? dProfile.getFullName() : doctorUser.getUsername();
-
-        emailService.sendAppointmentBookedEmail(patient.getEmail(), patientName, doctorName, a.getAppointmentDate());
-        emailService.sendDoctorAppointmentRequestEmail(doctorUser.getEmail(), doctorName, patientName, a.getAppointmentDate());
-
-        notificationService.createNotification(
-            patient.getId(),
-            Notification.NotificationType.APPOINTMENT_CONFIRMED,
-            "Appointment booked with Dr. " + doctorName + " for " + a.getAppointmentDate()
-        );
-        notificationService.createNotification(
-            doctorUser.getId(),
-            Notification.NotificationType.DOCTOR_MESSAGE,
-            "New appointment request from " + patientName + " for " + a.getAppointmentDate()
-        );
-
+        
+        // Send notifications and emails to both patient and doctor
+        try {
+            String patientName = patient.getFullName() != null ? patient.getFullName() : patient.getUsername();
+            String doctorName = doctorUser.getFullName() != null ? doctorUser.getFullName() : doctorUser.getUsername();
+            String appointmentDateStr = a.getAppointmentDate() != null ? a.getAppointmentDate().toString() : "TBD";
+            
+            // Notify PATIENT about booking confirmation
+            notificationService.createNotification(
+                    patient.getId(),
+                    Notification.NotificationType.APPOINTMENT_REMINDER,
+                    "Appointment booked: You have scheduled an appointment with Dr. " + doctorName + " on " + appointmentDateStr
+            );
+            
+            if (patient.getEmail() != null && !patient.getEmail().isBlank()) {
+                emailService.sendSimpleEmail(
+                        patient.getEmail(),
+                        "Appointment Booked",
+                        "Your appointment has been booked with Dr. " + doctorName + " on " + appointmentDateStr + 
+                        ". Please wait for the doctor to confirm."
+                );
+            }
+            System.out.println("[APPOINTMENT-BOOK] Patient notification and email sent");
+            
+            // Notify DOCTOR about new booking
+            notificationService.createNotification(
+                    doctorUser.getId(),
+                    Notification.NotificationType.APPOINTMENT_REMINDER,
+                    "New appointment request: " + patientName + " has booked an appointment with you on " + appointmentDateStr
+            );
+            
+            if (doctorUser.getEmail() != null && !doctorUser.getEmail().isBlank()) {
+                emailService.sendSimpleEmail(
+                        doctorUser.getEmail(),
+                        "New Appointment Request",
+                        "Patient " + patientName + " has booked an appointment with you on " + appointmentDateStr + 
+                        ". Please log in to accept or reject the appointment."
+                );
+            }
+            System.out.println("[APPOINTMENT-BOOK] Doctor notification and email sent");
+        } catch (Exception e) {
+            System.err.println("[APPOINTMENT-BOOK-ERROR] Failed to send notifications/emails: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
         return convertToAppointmentDTO(a);
     }
 

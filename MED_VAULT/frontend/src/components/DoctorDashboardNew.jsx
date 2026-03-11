@@ -14,7 +14,8 @@ import {
   FiXCircle,
   FiDownload,
   FiAlertCircle,
-  FiLock
+  FiLock,
+  FiBell
 } from 'react-icons/fi';
 import { FaStethoscope, FaRobot, FaCalendarAlt, FaHeartbeat } from 'react-icons/fa';
 import PrescriptionView from './PrescriptionView';
@@ -25,6 +26,7 @@ const navItems = [
   { key: 'dashboard', label: 'Dashboard', icon: FiHome },
   { key: 'appointments', label: 'Appointments', icon: FiFileText },
   { key: 'feedback', label: 'Feedback', icon: FiCheckCircle },
+  { key: 'notifications', label: 'Notifications', icon: FiBell },
   { key: 'patients', label: 'Patients', icon: FiUsers },
   { key: 'calendar', label: 'Calendar', icon: FiCalendar },
   { key: 'profile', label: 'Edit Profile', icon: FiSettings }
@@ -43,6 +45,8 @@ export default function DoctorDashboard() {
   const [profile, setProfile] = useState(null);
   const [appointments, setAppointments] = useState([]);
   const [feedbackList, setFeedbackList] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [patients, setPatients] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [patientRecords, setPatientRecords] = useState([]);
@@ -196,6 +200,53 @@ export default function DoctorDashboard() {
       console.error('Feedback fetch error', err);
     }
   };
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await axios.get('/api/notifications', { headers: authHeader });
+      setNotifications(res.data?.notifications || []);
+    } catch (err) {
+      console.error('Notifications fetch error', err);
+      setNotifications([]);
+    }
+  };
+
+  const fetchUnreadNotificationCount = async () => {
+    try {
+      const res = await axios.get('/api/notifications/unread-count', { headers: authHeader });
+      setUnreadNotificationCount(res.data?.unreadCount || 0);
+    } catch (err) {
+      console.error('Unread notification count fetch error', err);
+      setUnreadNotificationCount(0);
+    }
+  };
+
+  const markNotificationAsRead = async (notificationId) => {
+    try {
+      await axios.put(`/api/notifications/${notificationId}/mark-read`, {}, { headers: authHeader });
+      fetchUnreadNotificationCount();
+      fetchNotifications();
+    } catch (err) {
+      console.error('Mark notification read failed', err);
+    }
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    try {
+      await axios.put('/api/notifications/mark-all-read', {}, { headers: authHeader });
+      fetchUnreadNotificationCount();
+      fetchNotifications();
+    } catch (err) {
+      console.error('Mark all notifications read failed', err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection === 'notifications') {
+      fetchUnreadNotificationCount();
+      fetchNotifications();
+    }
+  }, [activeSection]);
 
   const fetchPatientRecords = async (patientUserId) => {
     setAccessDeniedPatient(null);
@@ -798,6 +849,39 @@ export default function DoctorDashboard() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {activeSection === 'notifications' && (
+          <section className="doctor-section">
+            <div className="doctor-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h2 style={{ margin: 0 }}>Notifications</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="badge badge-pending">Unread: {unreadNotificationCount}</span>
+                  <button className="ghost" onClick={markAllNotificationsAsRead}>Mark all read</button>
+                </div>
+              </div>
+
+              {notifications.length === 0 ? (
+                <p className="muted">No notifications available.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {notifications.map((n) => (
+                    <div key={n.id} className="doctor-note-item" style={{ borderLeft: n.isRead ? '4px solid #d1d5db' : '4px solid #2563eb' }}>
+                      <strong>{n.type?.replace(/_/g, ' ') || 'Notification'}</strong>
+                      <p style={{ marginTop: '4px' }}>{n.message}</p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                        <small className="muted">{n.createdAt ? new Date(n.createdAt).toLocaleString() : '-'}</small>
+                        {!n.isRead && (
+                          <button className="ghost" onClick={() => markNotificationAsRead(n.id)}>Mark read</button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

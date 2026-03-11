@@ -50,43 +50,22 @@ public class EmailService {
         }
     }
 
-    public void sendAppointmentBookedEmail(String toEmail, String patientName, String doctorName, java.time.LocalDateTime appointmentTime) {
+    public void sendSimpleEmail(String toEmail, String subject, String body) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(toEmail);
-        message.setSubject("MedVault - Appointment booked successfully");
-        message.setText(String.format(
-                "Hi %s,\n\nYour appointment with Dr. %s is booked for %s.\n\nThank you,\nMedVault",
-                patientName != null ? patientName : "Patient",
-                doctorName != null ? doctorName : "Doctor",
-                appointmentTime != null ? appointmentTime.toString() : "N/A"
-        ));
-        if (fromAddress != null && !fromAddress.isEmpty()) {
-            message.setFrom(fromAddress);
-        }
-        try {
-            mailSender.send(message);
-        } catch (Exception ex) {
-            System.err.println("Failed to send appointment booked email: " + ex.getMessage());
-        }
-    }
+        message.setSubject(subject);
+        message.setText(body);
 
-    public void sendDoctorAppointmentRequestEmail(String toEmail, String doctorName, String patientName, java.time.LocalDateTime appointmentTime) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(toEmail);
-        message.setSubject("MedVault - New appointment request");
-        message.setText(String.format(
-                "Hi Dr. %s,\n\nYou have a new appointment request from %s for %s.\n\nPlease review it in your dashboard.\n\nThanks,\nMedVault",
-                doctorName != null ? doctorName : "Doctor",
-                patientName != null ? patientName : "Patient",
-                appointmentTime != null ? appointmentTime.toString() : "N/A"
-        ));
         if (fromAddress != null && !fromAddress.isEmpty()) {
             message.setFrom(fromAddress);
         }
+
         try {
             mailSender.send(message);
         } catch (Exception ex) {
-            System.err.println("Failed to send doctor appointment request email: " + ex.getMessage());
+            System.err.println("Failed to send email: " + ex.getMessage());
+            ex.printStackTrace();
+            System.out.println("DEV email fallback -> to: " + toEmail + ", subject: " + subject + ", body: " + body);
         }
     }
 }
